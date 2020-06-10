@@ -11,12 +11,14 @@ import (
 type TerrariaServer struct {
 	Cmd    *exec.Cmd
 	Stdin  *bufio.Writer
-	Stdout *bufio.Scanner
+	Stdout *bufio.Reader
 
 	loglevel int
 	uuid     string
 
-	commandqueue chan string
+	commandqueue    chan string
+	commandcount    int
+	commandqueuemax int
 }
 
 // IsUp -
@@ -62,7 +64,7 @@ func (s *TerrariaServer) Start() error {
 	}
 
 	s.Stdin = bufio.NewWriter(stdin)
-	s.Stdout = bufio.NewScanner(stdout)
+	s.Stdout = bufio.NewReader(stdout)
 
 	if err = s.Start(); err != nil {
 		return err
@@ -128,9 +130,20 @@ func (s *TerrariaServer) CommandQueue() *chan string {
 	return &s.commandqueue
 }
 
+// EnqueueCommand -
+func (s *TerrariaServer) EnqueueCommand(c string) {
+	if s.commandcount < s.commandqueuemax-1 {
+		*s.CommandQueue() <- c
+		s.commandcount = s.commandcount + 1
+	} else {
+		LogWarning(s, "Attempted to run more than the maximum amount of commands!")
+	}
+}
+
 // RunCommand -
 func (s *TerrariaServer) RunCommand(c string) error {
-	if _, err := s.Stdin.WriteString(c); err != nil {
+	s.commandcount = s.commandcount - 1
+	if _, err := s.Stdin.WriteString(c + "\n"); err != nil {
 		return err
 	}
 	return nil
@@ -141,15 +154,15 @@ func (s *TerrariaServer) RunCommand(c string) error {
 // NewTerrariaServer -
 func NewTerrariaServer() *TerrariaServer {
 	t := &TerrariaServer{
-		uuid:         "terraria112312",
+		uuid:         "terraria",
 		loglevel:     3,
-		commandqueue: make(chan string, 1000)}
+		commandqueue: make(chan string, 500)}
 	gameServers = append(gameServers, t)
 	return t
 }
 
 func superviseTerrariaOut(t *TerrariaServer) {
-	scanner := t.Stdout
+	scanner := bufio.NewScanner(t.Stdout)
 	for scanner.Scan() {
 		LogOutput(t, scanner.Text())
 	}

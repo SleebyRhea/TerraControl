@@ -7,7 +7,8 @@ import (
 )
 
 const (
-	defaultPort = 8080
+	defaultPort        = 8080
+	defaultMaxCommands = 500
 )
 
 // Configuration -

@@ -1,5 +1,7 @@
 package main
 
+import "time"
+
 var gameServers = make([]GameServer, 0)
 
 // GameServer -
@@ -15,6 +17,7 @@ type GameServer interface {
 
 // Commandable -
 type Commandable interface {
+	EnqueueCommand(string)
 	RunCommand(string) error
 	CommandQueue() *chan string
 }
@@ -25,6 +28,7 @@ func superviseQueue(c Commandable) {
 		select {
 		case command := <-*q:
 			c.RunCommand(command)
+			time.Sleep(time.Second)
 		}
 	}
 }
