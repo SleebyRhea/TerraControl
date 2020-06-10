@@ -10,19 +10,16 @@ type GameServer interface {
 	Stop() error
 	Start() error
 	Restart() error
-
-	//Save() error
-	//RunCommand(...string) error
 }
 
-// Commandable -
-type Commandable interface {
+// CommandableServer -
+type CommandableServer interface {
 	EnqueueCommand(string)
 	RunCommand(string) error
 	CommandQueue() *chan string
 }
 
-func superviseQueue(c Commandable) {
+func superviseQueue(c CommandableServer) {
 	q := c.CommandQueue()
 	for {
 		select {
