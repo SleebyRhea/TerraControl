@@ -2,78 +2,90 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"errors"
 	"io"
+	"log"
 	"os/exec"
+	"strings"
+	"syscall"
+	"time"
 )
 
 // TerrariaServer - Terraria server definition
 type TerrariaServer struct {
 	Cmd    *exec.Cmd
-	Stdin  *bufio.Writer
-	Stdout *bufio.Reader
+	Stdin  io.Writer
+	Stdout io.Reader
 
+	// Loggable
 	loglevel int
 	uuid     string
 
+	// Commandable
 	commandqueue    chan string
 	commandcount    int
 	commandqueuemax int
 }
 
-// IsUp -
-func (s *TerrariaServer) IsUp() bool {
-	if s.Cmd.ProcessState != nil {
-		return false
+// Start -
+func (s *TerrariaServer) Start() error {
+	var err error
+
+	s.commandqueue = make(chan string, 500)
+	s.commandcount = 0
+	s.commandqueuemax = 500
+
+	if s.Stdin, err = s.Cmd.StdinPipe(); err != nil {
+		return err
 	}
 
-	if s.Cmd.Process != nil {
-		return true
+	if s.Stdout, err = s.Cmd.StdoutPipe(); err != nil {
+		return err
 	}
 
-	return false
+	ready := make(chan struct{})
+
+	go superviseTerrariaOut(s, ready)
+	go func() {
+		for {
+			select {
+			case cmd := <-s.commandqueue:
+				b := convertString(cmd)
+				b.WriteTo(s.Stdin)
+				s.commandcount = s.commandcount - 1
+			}
+		}
+	}()
+
+	if err = s.Cmd.Start(); err != nil {
+		return err
+	}
+
+	<-ready
+	return nil
 }
 
 // Stop -
 func (s *TerrariaServer) Stop() error {
-	if _, err := s.Stdin.WriteString("\nexit\n"); err != nil {
-		return err
+	LogOutput(s, "Stopping Terraria server")
+	done := make(chan error)
+
+	SendCommand("exit", s)
+	go func() { done <- s.Cmd.Wait() }()
+
+	LogDebug(s, "Waiting for Terraria to exit")
+	select {
+	case <-time.After(30 * time.Second):
+		s.Cmd.Process.Kill()
+		return errors.New("terraria took too long to exit, killed")
+	case err := <-done:
+		LogDebug(s, "Terraria has exited")
+		if err != nil {
+			return err
+		}
+		return nil
 	}
-
-	if err := s.Cmd.Wait(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// Start -
-func (s *TerrariaServer) Start() error {
-	var (
-		stdin  io.WriteCloser
-		stdout io.ReadCloser
-		err    error
-	)
-
-	if stdin, err = s.Cmd.StdinPipe(); err != nil {
-		return err
-	}
-
-	if stdout, err = s.Cmd.StdoutPipe(); err != nil {
-		return err
-	}
-
-	s.Stdin = bufio.NewWriter(stdin)
-	s.Stdout = bufio.NewReader(stdout)
-
-	if err = s.Start(); err != nil {
-		return err
-	}
-
-	go superviseTerrariaOut(s)
-	go superviseQueue(s)
-
-	return nil
 }
 
 // Restart -
@@ -102,6 +114,19 @@ func (s *TerrariaServer) Status() (int, error) {
 	return 2, errors.New("Process entered an unknown state")
 }
 
+// IsUp -
+func (s *TerrariaServer) IsUp() bool {
+	if s.Cmd.ProcessState != nil {
+		return false
+	}
+
+	if s.Cmd.Process != nil {
+		return true
+	}
+
+	return false
+}
+
 /**********/
 /* Logger */
 /**********/
@@ -125,45 +150,73 @@ func (s *TerrariaServer) SetLoglevel(l int) {
 /* Commandable */
 /***************/
 
-// CommandQueue -
-func (s *TerrariaServer) CommandQueue() *chan string {
-	return &s.commandqueue
-}
-
 // EnqueueCommand -
 func (s *TerrariaServer) EnqueueCommand(c string) {
 	if s.commandcount < s.commandqueuemax-1 {
-		*s.CommandQueue() <- c
+		s.commandqueue <- c + "\n"
 		s.commandcount = s.commandcount + 1
 	} else {
 		LogWarning(s, "Attempted to run more than the maximum amount of commands!")
 	}
 }
 
-// RunCommand -
-func (s *TerrariaServer) RunCommand(c string) error {
-	s.commandcount = s.commandcount - 1
-	if _, err := s.Stdin.WriteString(c + "\n"); err != nil {
-		return err
-	}
-	return nil
-}
-
 // Main //
 
 // NewTerrariaServer -
-func NewTerrariaServer() *TerrariaServer {
+func NewTerrariaServer(path string, args ...string) *TerrariaServer {
 	t := &TerrariaServer{
-		uuid:         "terraria",
-		loglevel:     3,
-		commandqueue: make(chan string, 500)}
+		uuid: "terraria",
+		Cmd: exec.Command(path,
+			"-autocreate", "3", "-world", "C:\\Users\\Andrew Wyatt\\Documents\\My Games\\Terraria\\Worlds\\World11.wld", "-secure",
+			"-players", "8", "-pass", "123123", "-noupnp")}
+
+	t.Cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	t.SetLoglevel(3)
+
 	gameServers = append(gameServers, t)
 	return t
 }
 
-func superviseTerrariaOut(t *TerrariaServer) {
-	scanner := bufio.NewScanner(t.Stdout)
+func superviseTerrariaOut(s *TerrariaServer, ready chan struct{}) {
+	LogDebug(s, "Started Terraria supervisor")
+	r := false
+	scanner := bufio.NewScanner(s.Stdout)
+	// messagerRe := regexp.MustCompile("^<([^<>])*>.*$")
+
 	for scanner.Scan() {
-		LogOutput(t, scanner.Text())
+		//Strip the prefix that terraria outputs on newline
+		out := scanner.Text()
+		out = strings.TrimPrefix(out, ": ")
+
+		switch out {
+		case ": Server started", "Server started":
+			r = true
+			ready <- struct{}{}
+			LogInit(s, "Terraria server INIT completed")
+		default:
+			if r {
+				LogOutput(s, out)
+			} else {
+				LogInit(s, out)
+			}
+
+			switch e := EventType(out, s); e {
+			case 0: //Player login
+				name := strings.TrimSuffix(out, " has joined.")
+				SendCommand("playing", s)
+				SendCommand(sprintf("say Hello there %s!", name), s)
+			}
+		}
 	}
+}
+
+func convertString(str string) bytes.Buffer {
+	b := *bytes.NewBuffer(make([]byte, 0))
+	nul := []byte{0x0000}
+	for _, c := range str {
+		b.WriteRune(c)
+		b.Write(nul)
+	}
+	log.Output(1, sprintf("[DEBUG] Converted string %q to [% x] ", str, b.Bytes()))
+	return b
 }

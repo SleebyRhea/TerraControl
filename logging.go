@@ -11,6 +11,7 @@ const (
 	errorPrefix   = "ERROR"
 	warnPrefix    = "WARN"
 	infoPrefix    = "INFO"
+	initPrefix    = "INIT"
 
 	debugLevel   = 2
 	verboseLevel = 2
@@ -55,6 +56,11 @@ func LogInfo(l Logger, m string) {
 	if l.Loglevel() >= infoLevel {
 		log.Output(1, sprintf("[%s] %s", infoPrefix, m))
 	}
+}
+
+// LogInit -
+func LogInit(l Logger, m string) {
+	log.Output(1, sprintf("[%s] %s", initPrefix, m))
 }
 
 // LogVerbose -

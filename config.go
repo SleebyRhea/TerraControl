@@ -16,8 +16,8 @@ type Configuration struct {
 	ip   net.IP
 	port int
 
-	hostname   string
-	rootprefix string
+	hostname  string
+	uriprefix string
 }
 
 // Port - Return the port in string form (ex :8080)
