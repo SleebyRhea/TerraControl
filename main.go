@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 )
 
 func main() {
@@ -19,6 +20,21 @@ func main() {
 	sc := make(chan os.Signal, 1)
 	signal.Notify(sc)
 	SendCommand("help", ts)
+
+	go func() {
+		for {
+			SendCommand("say Testing", ts)
+			time.Sleep(time.Second)
+		}
+	}()
+
+	go func() {
+		for {
+			<-time.After(10 * time.Second)
+			LogInfo(ts, sprintf("Message logged: %d", len(ts.ChatMessages())))
+		}
+	}()
+
 	for sig := range sc {
 		switch sig {
 		case os.Interrupt, syscall.SIGTERM:

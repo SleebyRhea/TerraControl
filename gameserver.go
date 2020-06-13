@@ -7,10 +7,11 @@ var gameEvents = make([]*regexp.Regexp, 0)
 var illegalNamesRe = make([]*regexp.Regexp, 0)
 
 const (
-	eventConnection  = 0
-	eventPlayerLogin = 1
-	eventPlayerLeft  = 2
-	eventPlayerInfo  = 3
+	eventConnection = 0
+	eventPlayerJoin = 1
+	eventPlayerLeft = 2
+	eventPlayerInfo = 3
+	eventPlayerChat = 4
 )
 
 // GameServer -
@@ -60,6 +61,8 @@ func init() {
 		"^(.{1,20}) has left.$"))
 	gameEvents = append(gameEvents, regexp.MustCompile(
 		"^(.{1,20}) \\(([0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}):[0-9]{1,5}\\)$"))
+	gameEvents = append(gameEvents, regexp.MustCompile(
+		"^<(.{1,20})> (.*)$"))
 
 	illegalNamesRe = append(illegalNamesRe, regexp.MustCompile(
 		"^(\\s$|^[<>\\[\\]\\(\\)\\|\\]|[<>\\[\\]\\(\\)\\|\\]$|[aA]dmin|[sS]ystem|[sS]erver|[sS]uper[aA]dmin)"))

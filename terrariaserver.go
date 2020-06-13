@@ -51,7 +51,8 @@ type TerrariaServer struct {
 	commandcount    int
 	commandqueuemax int
 
-	players []*Player
+	players  []*Player
+	messages [][2]string
 }
 
 // Start -
@@ -229,6 +230,16 @@ func (s *TerrariaServer) Player(n string) *Player {
 	return nil
 }
 
+// ChatMessages - Return the total number of message that are logged
+func (s *TerrariaServer) ChatMessages() [][2]string {
+	return s.messages
+}
+
+// NewChatMessage - Return the total number of message that are logged
+func (s *TerrariaServer) NewChatMessage(msg, name string) {
+	s.messages = append(s.messages, [2]string{name, msg})
+}
+
 // NewTerrariaServer -
 func NewTerrariaServer(path string, args ...string) *TerrariaServer {
 	t := &TerrariaServer{
@@ -278,7 +289,7 @@ func superviseTerrariaOut(s *TerrariaServer, ready chan struct{}) {
 					LogDebug(s, sprintf("Passed new connection information: %s", m[1]))
 				}()
 
-			case eventPlayerLogin:
+			case eventPlayerJoin:
 				SendCommand("playing", s)
 
 			case eventPlayerLeft:
@@ -295,6 +306,11 @@ func superviseTerrariaOut(s *TerrariaServer, ready chan struct{}) {
 				if IsNameIllegal(plr.Name()) {
 					plr.Kick("Name is not allowed.")
 				}
+
+			case eventPlayerChat:
+				m := gameEvents[eventPlayerChat].FindStringSubmatch(out)
+				s.NewChatMessage(m[2], m[1])
+				logOut(s, out)
 
 			default:
 				// Just log it and move on
