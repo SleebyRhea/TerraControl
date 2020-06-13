@@ -15,8 +15,9 @@ import (
 
 // Player - Defines a player that has connected to the server at some point
 type Player struct {
-	ip   net.IP
-	name string
+	ip     net.IP
+	name   string
+	server *TerrariaServer
 }
 
 // IP - Returns the IP address that the player used to connect this session
@@ -27,6 +28,12 @@ func (p *Player) IP() net.IP {
 // Name - Return the name of the player object
 func (p *Player) Name() string {
 	return p.name
+}
+
+// Kick - Kick a player
+func (p *Player) Kick(r string) {
+	SendCommand(sprintf("say Kicking %s. %s.", p.Name(), r), p.server)
+	SendCommand("kick "+p.Name(), p.server)
 }
 
 // TerrariaServer - Terraria server definition
@@ -72,8 +79,10 @@ func (s *TerrariaServer) Start() error {
 		for {
 			select {
 			case cmd := <-s.commandqueue:
+				time.Sleep(time.Second)
 				b := convertString(cmd)
 				b.WriteTo(s.Stdin)
+				LogDebug(s, "Ran: "+cmd)
 				s.commandcount = s.commandcount - 1
 			}
 		}
@@ -189,7 +198,7 @@ func (s *TerrariaServer) EnqueueCommand(c string) {
 func (s *TerrariaServer) NewPlayer(n, ips string) *Player {
 	var plr *Player
 	if plr = s.Player(n); plr == nil {
-		plr = &Player{name: n}
+		plr = &Player{name: n, server: s}
 	}
 	plr.ip = net.ParseIP(ips)
 	s.players = append(s.players, plr)
@@ -250,7 +259,8 @@ func superviseTerrariaOut(s *TerrariaServer, ready chan struct{}) {
 	for scanner.Scan() {
 		//Strip the prefix that terraria outputs on newline
 		out := scanner.Text()
-		out = strings.TrimPrefix(out, ": ")
+		out = strings.TrimPrefix(out, ":")
+		out = strings.TrimPrefix(out, " ")
 
 		switch out {
 		case "Server started":
@@ -269,9 +279,7 @@ func superviseTerrariaOut(s *TerrariaServer, ready chan struct{}) {
 				}()
 
 			case eventPlayerLogin:
-				name := strings.TrimSuffix(out, " has joined.")
 				SendCommand("playing", s)
-				SendCommand(sprintf("say Hello there %s!", name), s)
 
 			case eventPlayerLeft:
 				name := strings.TrimSuffix(out, " has left.")
@@ -283,7 +291,10 @@ func superviseTerrariaOut(s *TerrariaServer, ready chan struct{}) {
 					LogDebug(s, sprintf("Passed player information: %s", out))
 				}()
 				m := gameEvents[eventPlayerInfo].FindStringSubmatch(out)
-				s.NewPlayer(m[1], m[2])
+				plr := s.NewPlayer(m[1], m[2])
+				if IsNameIllegal(plr.Name()) {
+					plr.Kick("Name is not allowed.")
+				}
 
 			default:
 				// Just log it and move on

@@ -41,6 +41,16 @@ func EventType(s string, gs GameServer) int {
 	return -1
 }
 
+// IsNameIllegal - Determine if a given name is not permitted to be used
+func IsNameIllegal(s string) bool {
+	for _, re := range illegalNamesRe {
+		if re.MatchString(s) {
+			return true
+		}
+	}
+	return false
+}
+
 func init() {
 	gameEvents = append(gameEvents, regexp.MustCompile(
 		"^([0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}):[0-9]{1,5} is connecting...$"))
