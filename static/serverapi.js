@@ -1,175 +1,274 @@
+'use strict'
+
+function DOMLoaded() {
+	return false
+}
+
+function resetElement(e) {
+	e.value = null
+}
+
 function getElementInsideContainer(pID, chID) {
 	var elm = document.getElementById(chID);
 	var parent = elm ? elm.parentNode : {};
 	return (parent.id && parent.id === pID) ? elm : {};
 }
 
-function resetElement(e) {
-	e.value = null
-}
-function kickPlayer(plr) {
-	var xhttp = new XMLHttpRequest();
+var DEBUG = false
+var APIBASE = "/api/"
+var APIRE = '\\/api\\/'
 
-	xhttp.onreadystatechange = function() {
-		if (xhttp.readyState == 4 && xhttp.status == 200) {
-			console.log("Kicked player: "+plr)
-			
-		} else if (xhttp.status == 403) {
-			console.log("Failed to kick player (not found): "+plr)
-		}
+var playerKick     = DOMLoaded
+var playerBan      = DOMLoaded
+var serverSay      = DOMLoaded
+var serverStop     = DOMLoaded
+var serverMOTD     = DOMLoaded
+var serverTime     = DOMLoaded
+var serverStart    = DOMLoaded
+var serverSettle   = DOMLoaded
+var serverPassword = DOMLoaded
+var serverRestart  = DOMLoaded
+var verifyMessage  = DOMLoaded
+var getRequester   = DOMLoaded
+
+var scopes = new Map()
+
+class TerraControlAPI {
+	constructor(scope, obj) {
+		TerraControlAPI.RegisterEndpoint(scope, obj, this)
+		this.scope = scope
+		this.obj = obj
 	}
 
-	xhttp.open("GET", "/api/player/kick/"+plr,true);
-	xhttp.send()
-};
-
-function banPlayer(plr) {
-	var xhttp = new XMLHttpRequest();
-
-	xhttp.onreadystatechange = function() {
-		if (xhttp.readyState == 4 && xhttp.status == 200) {
-			console.log("Banned player: "+plr)
-		} else if (xhttp.status == 403) {
-			console.log("Failed to ban player (not found): "+plr)
-		}
-	}
-
-	xhttp.open("GET", "/api/player/ban/"+plr,true);
-	xhttp.send()
-};
-
-function setMOTD() {
-	var xhttp = new XMLHttpRequest();
-	data = getElementInsideContainer("send-server-motd",
-		"send-server-motd-input");
-
-	xhttp.onreadystatechange = function() {
-		if (xhttp.readyState == 4 && xhttp.status == 200) {
-			console.log("Setting MOTD: "+data.value)	
-		}
-
-		resetElement(data)
-	}
-
-	xhttp.open("GET", "/api/server/motd/"+data.value,true);
-	xhttp.send()
-}
-
-function setPassword() {
-	var xhttp = new XMLHttpRequest();
-	data = getElementInsideContainer("send-server-password",
-		"send-server-password-input");
-
-	xhttp.onreadystatechange = function() {
-		if (xhttp.readyState == 4 && xhttp.status == 200) {
-			console.log("Setting password: "+data.value)
-		}
-
-		resetElement(data)
-	}
-
-	xhttp.open("GET", "/api/server/password/"+data.value,true);
-	xhttp.send()
-}
-
-function sendMessage() {
-	var xhttp = new XMLHttpRequest();
-	data = getElementInsideContainer("send-server-message",
-		"send-server-message-input");
-
-	if (data.classList.contains("c-field--success")) {
-		xhttp.onreadystatechange = function() {
-			if (xhttp.readyState == 4 && xhttp.status == 200) {
-				console.log("Sent message: "+data.value)
+	static RequestBuilder(s, o, ...args) {
+		var r = APIBASE + s + "/" + o + "/";
+		if (args.length > 0) {
+			for (var v of Array.from(args)) {
+				if (v != "" && v != undefined) {
+					console.log(v)
+					r = r + v;
+				}
 			}
-
-			resetElement(data)
 		}
-
-		xhttp.open("GET", "/api/server/say/"+data.value,true);
-		xhttp.send()
-	}
-}
-
-function verifyMessage(elm, min, max) {
-	i = getElementInsideContainer(
-		"send-server-div",
-		"send-server-message-button")
-
-	if (i.classList.contains("c-button--brand")) {
-		i.classList.remove("c-button--brand")
+		return r;
 	}
 
-	if (elm.value.length > max || elm.value.length < min) {
-		elm.classList.remove("c-field--success")
-		elm.classList.add("c-field--error")
-		i.classList.add("c-button--error")
-		if (i.classList.contains("c-button--success")) {
-			i.classList.remove("c-button--success")
-		}
-	} else {
-		elm.classList.remove("c-field--error")
-		elm.classList.add("c-field--success")
-		i.classList.add("c-button--success")
-		if (i.classList.contains("c-button--error")) {
-			i.classList.remove("c-button--error")
-		}
-	}
-}
-
-function startServer() {
-	console.log("Starting server...")
-}
-
-function restartServer() {
-	console.log("Restarting server...")
-}
-
-function stopServer() {
-	console.log("Stopping server...")
-}
-
-function settleLiquids() {
-	var xhttp = new XMLHttpRequest();
-
-	xhttp.onreadystatechange = function() {
-		if (xhttp.readyState == 4 && xhttp.status == 200) {
-			console.log("Settling server liquids")
+	static RegisterEndpoint(s, o, n) {
+		var scope = scopes.get(s);
+		if ( scope == undefined) {
+			console.log("TerraControlAPI: RegisterEndpoint: Invalid scope: "+s);
+			return false;
 		} else {
-			console.log("Failed to run settle command")
+			scope.set(o, n)
 		}
 	}
 
-	xhttp.open("GET", "/api/server/settle", true);
-	xhttp.send()
-}
+	static Requester(r) {
+		var re = new RegExp(APIRE+"[^\\/]+\\/[^\\/]+\\/")
+		var s = r.match(re, "g")[0].split("/")
+		return scopes.get(s[2]).get(s[3])
+	}
 
-function serverTime(time) {
-	var xhttp = new XMLHttpRequest();
+	getdata() {
+		return false
+	}
 
-	if (time) {
-		xhttp.onreadystatechange = function() {
-			if (xhttp.readyState == 4 && xhttp.status == 200) {
-				console.log("Setting time to: "+time)
-				
-			} else if (xhttp.status == 403) {
-				console.log("Failed to run time command")
+	onprecall() {
+		// Block all calls until the DOM is loaded or this function is overridden
+		return DOMLoaded()
+	}
+
+	oncomplete() {
+		if (DEBUG) {
+			console.log("TerraControl API: Unimplemented: oncomplete: "+this.request)
+		}
+	}
+
+	onsuccess() {
+		if (DEBUG) {
+			console.log("TerraControl API: Unimplemented: oncomplete: "+this.request)
+		}
+	}
+
+	onredirect() {
+		if (DEBUG) {
+			console.log("TerraControl API: Unimplemented: oncomplete: "+this.request)
+		}
+	}
+
+	onfailure() {
+		if (DEBUG) {
+			console.log("TerraControl API: Unimplemented: onfail: "+this.request)
+		}
+	}
+
+	onbadrequest() {
+		if (DEBUG) {
+			console.log("TerraControl API: Unimplemented: onservererror: "+this.request)
+		}
+	}
+
+	call(data) {
+		if (this.request) {
+			this.lastrequest = this.request
+		}
+
+		this.request = TerraControlAPI.RequestBuilder(this.scope, this.obj,
+			this.getdata(), data);
+
+		console.log("Making request: "+this.request)
+		var xhttp = new XMLHttpRequest();
+
+		if (this.onprecall) {
+			xhttp.onreadystatechange = function() {
+				if (xhttp.readyState == 4) {
+					var r = TerraControlAPI.Requester(this.responseURL)
+					switch (true) {
+						case true:
+							r.oncomplete(this.status);
+						case is2XX(this.status):
+							r.onsuccess(this.status);
+							break;
+						case is3XX(this.status):
+							r.onredirect(this.status);
+							break;
+						case is4XX(this.status):
+							r.onfailure(this.status);
+							break;
+						case is5XX(this.status):
+							r.onservererror(this.status);
+							break;
+						default:
+							console.log("TerraControl API: Invalid Response: "+this.status)
+					}
+				}
 			}
 		}
 
-		xhttp.open("GET", "/api/server/time/"+time, true);
-		xhttp.send()
-	} else {
-		xhttp.onreadystatechange = function() {
-			if (xhttp.readyState == 4 && xhttp.status == 200) {
-				console.log("Getting server time: ")
-				
-			} else {
-				console.log("Failed to run time command")
-			}
-		}
-
-		xhttp.open("GET", "/api/server/time", true);
+		xhttp.open("GET", this.request, true)
 		xhttp.send()
 	}
 }
+
+var scopes = new Map()
+
+function is2XX(r) {
+	return (r > 299) ? false
+		 : (r < 200) ? false
+		 : true
+}
+
+function is3XX(r) {
+	return (r > 399) ? false
+		 : (r < 300) ? false
+		 : true
+}
+
+function is4XX(r) {
+	return (r > 499) ? false
+		 : (r < 400) ? false
+		 : true
+}
+
+function is5XX(r) {
+	return (r > 599) ? false
+		 : (r < 500) ? false
+		 : true
+}
+
+// BEGIN
+document.addEventListener('DOMContentLoaded', () => {
+	// Only permit the creation of endpoints once the DOM is loaded
+	scopes.set("server", new Map())
+	scopes.set("player", new Map())
+
+	playerKick     = new TerraControlAPI("player", "kick")
+	playerBan      = new TerraControlAPI("player", "ban")
+	serverSay      = new TerraControlAPI("server", "say")
+	serverStop     = new TerraControlAPI("server", "stop")
+	serverMOTD     = new TerraControlAPI("server", "motd")
+	serverTime     = new TerraControlAPI("server", "time")
+	serverStart    = new TerraControlAPI("server", "start")
+	serverSettle   = new TerraControlAPI("server", "settle")
+	serverPassword = new TerraControlAPI("server", "password")
+
+	serverSay.onprecall = function() {
+		d = getElementInsideContainer("send-server-message",
+			"send-server-message-input");
+		if (d.contains("c-field--success")) {
+			return true
+		} else {
+			return false
+		}
+	}
+
+	serverSay.getdata = function() {
+		return getElementInsideContainer("send-server-message",
+			"send-server-message-input").value;
+	}
+
+	serverSay.onsuccess = function() {
+		var d = getElementInsideContainer("send-server-message",
+			"send-server-message-input");
+		resetElement(d)
+	}
+
+	serverMOTD.getdata = function() {
+		return getElementInsideContainer("send-server-motd",
+		"send-server-motd-input").value;
+	}
+
+	serverMOTD.onsuccess = function() {
+		var d = getElementInsideContainer("send-server-motd",
+			"send-server-motd-input");
+		resetElement(d); 
+	}
+
+	serverPassword.getdata = function() {
+		return getElementInsideContainer("send-server-password",
+		"send-server-password-input").value;
+	}
+
+	serverPassword.onsuccess = function() {
+		var d = getElementInsideContainer("send-server-password",
+			"send-server-password-input");
+		resetElement(d); 
+	}
+	
+	
+	verifyMessage = function (elm, min, max) {
+		var i = getElementInsideContainer("send-server-div",
+			"send-server-message-button")
+	
+		if (i.classList.contains("c-button--brand")) {
+			i.classList.remove("c-button--brand")
+		}
+	
+		if (elm.value.length > max || elm.value.length < min) {
+			elm.classList.remove("c-field--success")
+			elm.classList.add("c-field--error")
+			i.classList.add("c-button--error")
+			if (i.classList.contains("c-button--success")) {
+				i.classList.remove("c-button--success")
+			}
+		} else {
+			elm.classList.remove("c-field--error")
+			elm.classList.add("c-field--success")
+			i.classList.add("c-button--success")
+			if (i.classList.contains("c-button--error")) {
+				i.classList.remove("c-button--error")
+			}
+		}
+	}
+
+	serverRestart = function() {
+		serverStop.call()
+		serverStart.call()
+	}
+
+	DOMLoaded = function() {
+		return true
+	}
+
+	console.log("DOM is ready, and javascript is loaded.")
+})
