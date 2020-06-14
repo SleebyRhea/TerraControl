@@ -72,7 +72,7 @@ func main() {
 		LogInfo(ts, "Received ban request: "+r.RequestURI)
 
 		if plr := ts.Player(pn); plr != nil {
-			// plr.Ban("Banned from the internet")
+			plr.Ban("Banned from the internet")
 			w.WriteHeader(200)
 		} else {
 			w.WriteHeader(404)

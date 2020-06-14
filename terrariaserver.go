@@ -34,6 +34,12 @@ func (p *Player) Kick(r string) {
 	SendCommand("kick "+p.Name(), p.server)
 }
 
+// Ban - Ban a player
+func (p *Player) Ban(r string) {
+	SendCommand(sprintf("say Banning player: \"%s\". %s.", p.Name(), r), p.server)
+	SendCommand("ban "+p.Name(), p.server)
+}
+
 // TerrariaServer - Terraria server definition
 type TerrariaServer struct {
 	Cmd    *exec.Cmd
@@ -232,9 +238,10 @@ func (s *TerrariaServer) NewPlayer(n, ips string) *Player {
 	var plr *Player
 	if plr = s.Player(n); plr == nil {
 		plr = &Player{name: n, server: s}
+		s.players = append(s.players, plr)
 	}
+
 	plr.ip = net.ParseIP(ips)
-	s.players = append(s.players, plr)
 	LogInfo(s, "New player logged: "+plr.Name())
 	return plr
 }

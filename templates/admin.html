@@ -75,13 +75,12 @@
 				Players: {{.PlayerCount}}
 			</div>
 			{{- if gt .PlayerCount 0 }}
-			<div class="c-card__item c-card__item--divider"></div>
 				{{- range $i, $p := .Players}}
-					<label class="c-card__item">
-						<button id="kickPlayer" class="c-button u-xsmall" type="button" value="{{$p.Name}}" onclick="kickPlayer(this.value)">Kick</button>
-						{{ $p.Name}} - {{$p.IP.String}}
-					</label>
-					<div class="c-card__item c-card__item--divider"></div>
+				<div class="c-card__item--brand c-input-group">
+					<input class="c-field" value="{{ $p.Name}} - {{$p.IP.String -}}" readonly>
+						<button id="kickPlayer" class="c-input-group c-button c-button--warning u-right" type="button" value="{{$p.Name}}" onclick="kickPlayer(this.value)">Kick</button>
+						<button id="kickPlayer" class="c-input-group c-button c-button--error u-right" type="button" value="{{$p.Name}}" onclick="banPlayer(this.value)">Ban</button>
+				</div>
 				{{- end}}
 			{{- end}}
 		</div>

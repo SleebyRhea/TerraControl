@@ -20,6 +20,22 @@ function kickPlayer(plr) {
 	xhttp.send()
 };
 
+function banPlayer(plr) {
+	var xhttp = new XMLHttpRequest();
+
+	xhttp.onreadystatechange = function() {
+		if (xhttp.readyState == 4 && xhttp.status == 200) {
+			console.log("Banned player: "+plr)
+			
+		} else if (xhttp.status == 403) {
+			console.log("Failed to ban player (not found): "+plr)
+		}
+	}
+
+	xhttp.open("GET", "/api/player/ban/"+plr,true);
+	xhttp.send()
+};
+
 function setMOTD() {
 	var xhttp = new XMLHttpRequest();
 	data = getElementInsideContainer("send-server-motd",
