@@ -22,7 +22,7 @@ function kickPlayer(plr) {
 
 function sendMessage() {
 	var xhttp = new XMLHttpRequest();
-	data = getElementInsideContainer("send-server-msg", "server-input");
+	data = getElementInsideContainer("send-server-input", "input");
 
 	if (data.classList.contains("c-field--success")) {
 		xhttp.onreadystatechange = function() {
@@ -37,11 +37,27 @@ function sendMessage() {
 }
 
 function verifyMessage(elm) {
+	i = getElementInsideContainer("send-server-div", "send-server-button")
 	if (elm.value.length > 64 || elm.value.length == 0) {
 		elm.classList.remove("c-field--success")
 		elm.classList.add("c-field--error")
+		if (i.classList.contains("c-button--success")) {
+			i.classList.remove("c-button--success")
+			i.classList.add("c-button--error")
+		}
 	} else {
 		elm.classList.remove("c-field--error")
 		elm.classList.add("c-field--success")
+		if (i.classList.contains("c-button--error")) {
+			i.classList.remove("c-button--error")
+			i.classList.add("c-button--success")
+		}
 	}
+}
+
+function startServer() {
+	console.log("Starting server...")
+}
+function stopServer() {
+	console.log("Stopping server...")
 }

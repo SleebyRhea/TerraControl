@@ -1,27 +1,43 @@
 <!DOCTYPE html>
 <html>
 	<head>
-		<h1>{{.Worldname}}</h1>
+		<link rel="stylesheet" href="//fonts.googleapis.com/css?family=Roboto+Mono|Source+Sans+Pro">
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css">
 		<link rel="stylesheet" href="https://unpkg.com/@blaze/css@9.2.0/dist/blaze/blaze.css">
 		<script src="static/serverapi.js"></script>
+		<meta http-equiv="refresh" content="10">
 	</head>
 	<body>
-		<h2>Players: {{.PlayerCount}}</h2>
-		{{- range .Players}}
-			<button id="kickPlayer" class="c-button u-xmedium" type="button" value="{{.Name}}" onclick="kickPlayer(this.value)">
-				Kick
-			</button>
-			{{.Name}}: {{.IP.String}}
-			<br>
-		{{- end}}
-		<h2>Message Server</h2>
-		<div class="c-input-group" >
-			<div id="send-server-msg" class="o-field">
-				<input id="server-input" class="c-field" placeholder="Message..." oninput="verifyMessage(this);">
+		<div class="c-card u-highest">
+			<div class="c-card__item c-card__item--brand">
+				Manage Server
+				<button class="u-right c-badge c-badge--success" onclick="startServer()">Start</button>
+				<button class="u-right c-badge c-badge--error" onclick="stopServer()">Stop</button>
 			</div>
-			<button class="c-button c-button--brand" onclick="sendMessage()">
-				Send
-			</button>
+			<div class="c-input-group" id="send-server-div" >
+				<div id="send-server-input" class="o-field">
+					<input type="text" id="input" class="c-field" placeholder="Message..." oninput="verifyMessage(this);">
+				</div>
+				<button id="send-server-button" class="c-button c-button--error" onclick="sendMessage()">
+					Send
+				</button>
+			</div>
+		</div>
+
+		<div class="c-card u-highest">
+			<div class="c-card__item c-card__item--brand">
+				Players: {{.PlayerCount}}
+			</div>
+			{{- if gt .PlayerCount 0 }}
+			<div class="c-card__item c-card__item--divider"></div>
+				{{- range $i, $p := .Players}}
+					<label class="c-card__item">
+						<button id="kickPlayer" class="c-button u-xsmall" type="button" value="{{$p.Name}}" onclick="kickPlayer(this.value)">Kick</button>
+						{{ $p.Name}} - {{$p.IP.String}}
+					</label>
+					<div class="c-card__item c-card__item--divider"></div>
+				{{- end}}
+			{{- end}}
 		</div>
 	</body>
 </html>
