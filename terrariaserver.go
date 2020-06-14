@@ -2,10 +2,8 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"errors"
 	"io"
-	"log"
 	"net"
 	"os/exec"
 	"strings"
@@ -32,7 +30,7 @@ func (p *Player) Name() string {
 
 // Kick - Kick a player
 func (p *Player) Kick(r string) {
-	SendCommand(sprintf("say Kicking %s. %s.", p.Name(), r), p.server)
+	SendCommand(sprintf("say Kicking player: \"%s\". %s.", p.Name(), r), p.server)
 	SendCommand("kick "+p.Name(), p.server)
 }
 
@@ -51,8 +49,13 @@ type TerrariaServer struct {
 	commandcount    int
 	commandqueuemax int
 
+	// PlayerInfo
 	players  []*Player
 	messages [][2]string
+
+	// Game Info
+	worldfile  string
+	configfile string
 }
 
 // Start -
@@ -80,7 +83,7 @@ func (s *TerrariaServer) Start() error {
 		for {
 			select {
 			case cmd := <-s.commandqueue:
-				time.Sleep(time.Second)
+				time.Sleep(time.Second / 2)
 				b := convertString(cmd)
 				b.WriteTo(s.Stdin)
 				LogDebug(s, "Ran: "+cmd)
@@ -195,6 +198,22 @@ func (s *TerrariaServer) EnqueueCommand(c string) {
 /* Main */
 /********/
 
+// Player - Return a player object that matches the string given
+func (s *TerrariaServer) Player(n string) *Player {
+	for _, p := range s.players {
+		if p.Name() == n {
+			return p
+		}
+	}
+
+	return nil
+}
+
+// Players - Returns the players that are currently in-game
+func (s *TerrariaServer) Players() []*Player {
+	return s.players
+}
+
 // NewPlayer - Add a player to the list of players if it isn't already present
 func (s *TerrariaServer) NewPlayer(n, ips string) *Player {
 	var plr *Player
@@ -219,17 +238,6 @@ func (s *TerrariaServer) RemovePlayer(n string) bool {
 	return false
 }
 
-// Player - Return a player object that matches the string given
-func (s *TerrariaServer) Player(n string) *Player {
-	for _, p := range s.players {
-		if p.Name() == n {
-			return p
-		}
-	}
-
-	return nil
-}
-
 // ChatMessages - Return the total number of message that are logged
 func (s *TerrariaServer) ChatMessages() [][2]string {
 	return s.messages
@@ -238,6 +246,13 @@ func (s *TerrariaServer) ChatMessages() [][2]string {
 // NewChatMessage - Return the total number of message that are logged
 func (s *TerrariaServer) NewChatMessage(msg, name string) {
 	s.messages = append(s.messages, [2]string{name, msg})
+}
+
+// Time - Returns the current game time
+// TODO: Actually finish this.
+func (s *TerrariaServer) Time() string {
+	SendCommand("time", s)
+	return ""
 }
 
 // NewTerrariaServer -
@@ -255,20 +270,21 @@ func NewTerrariaServer(path string, args ...string) *TerrariaServer {
 	return t
 }
 
+/**************/
+/* Goroutines */
+/**************/
+
 func superviseTerrariaOut(s *TerrariaServer, ready chan struct{}) {
 	LogDebug(s, "Started Terraria supervisor")
 	logOut := LogInit
 	scanner := bufio.NewScanner(s.Stdout)
-	// messagerRe := regexp.MustCompile("^<([^<>])*>.*$")
-
-	// Channel has a bufer of 100 in case too many connections are occurring at
-	// at once.
 	cch := make(chan string, 0)
 	pch := make(chan string, 0)
-	go connectionSupervisor(s, cch, pch)
+
+	go superviseTerrariaConnects(s, cch, pch)
 
 	for scanner.Scan() {
-		//Strip the prefix that terraria outputs on newline
+		// Strip the prefix that terraria outputs on a newline
 		out := scanner.Text()
 		out = strings.TrimPrefix(out, ":")
 		out = strings.TrimPrefix(out, " ")
@@ -282,7 +298,7 @@ func superviseTerrariaOut(s *TerrariaServer, ready chan struct{}) {
 		default:
 			switch e := EventType(out, s); e {
 			case eventConnection:
-				re := gameEvents[eventConnection]
+				re := gameEvents[e]
 				m := re.FindStringSubmatch(out)
 				go func() {
 					cch <- m[1]
@@ -297,20 +313,21 @@ func superviseTerrariaOut(s *TerrariaServer, ready chan struct{}) {
 				s.RemovePlayer(name)
 
 			case eventPlayerInfo:
-				go func() {
-					pch <- out
-					LogDebug(s, sprintf("Passed player information: %s", out))
-				}()
-				m := gameEvents[eventPlayerInfo].FindStringSubmatch(out)
+				go func() { pch <- out }()
+				m := gameEvents[e].FindStringSubmatch(out)
 				plr := s.NewPlayer(m[1], m[2])
 				if IsNameIllegal(plr.Name()) {
-					plr.Kick("Name is not allowed.")
+					plr.Kick("Name is not allowed")
 				}
 
 			case eventPlayerChat:
-				m := gameEvents[eventPlayerChat].FindStringSubmatch(out)
+				m := gameEvents[e].FindStringSubmatch(out)
 				s.NewChatMessage(m[2], m[1])
 				logOut(s, out)
+
+			case eventPlayerBoot:
+				m := gameEvents[e].FindStringSubmatch(out)
+				LogInfo(s, sprintf("Failed connection: %s [%s]", m[1], m[2]))
 
 			default:
 				// Just log it and move on
@@ -320,25 +337,48 @@ func superviseTerrariaOut(s *TerrariaServer, ready chan struct{}) {
 	}
 }
 
-func connectionSupervisor(s *TerrariaServer, cch chan string, pch chan string) {
+func superviseTerrariaConnects(s *TerrariaServer, cch chan string, pch chan string) {
 	newconnections := make(map[string]time.Time)
 	stale := make(map[string]int)
 	conRe := gameEvents[eventPlayerInfo]
 
 	for {
 		select {
+		case <-time.After(5 * time.Second):
+			for ip, t := range newconnections {
+				now := time.Now()
+				if now.Sub(t) > 30*time.Second {
+					LogWarning(s, "Stale connection found for IP: "+ip)
+					delete(newconnections, ip)
+					if num, ok := stale[ip]; ok {
+						stale[ip] = num + 1
+					} else {
+						stale[ip] = 1
+					}
+				}
+			}
+
+			for ip, cnt := range stale {
+				if cnt > 25 {
+					LogWarning(s, "Possible DoS taking place!")
+					LogWarning(s, sprintf("IP: %s | Stale Connections: %d", ip, cnt))
+				}
+				delete(stale, ip)
+			}
+
 		case c := <-cch:
 			LogDebug(s, "Adding channeled connection to list")
 			if _, ok := newconnections[c]; ok {
-				LogWarning(s, "Stale connection found for IP: "+c)
+				LogWarning(s, "Extra connection found for IP: "+c)
 				if num, ok := stale[c]; ok {
 					stale[c] = num + 1
 				} else {
 					stale[c] = 1
 				}
+
 			}
 			newconnections[c] = time.Now()
-			//Timeout of 10 seconds on new connections
+
 		case plr := <-pch:
 			LogDebug(s, "Received player info: "+plr)
 			m := conRe.FindStringSubmatch(plr)
@@ -353,34 +393,6 @@ func connectionSupervisor(s *TerrariaServer, cch chan string, pch chan string) {
 				delete(stale, ip)
 				LogDebug(s, "Cleared stale connection count for IP: "+ip)
 			}
-		case <-time.After(5 * time.Second):
-			if len(newconnections) < 1 {
-				break
-			}
-
-			for ip, t := range newconnections {
-				now := time.Now()
-				if now.Sub(t) > 30*time.Second {
-					LogWarning(s, "Stale connection found for IP: "+ip)
-					delete(newconnections, ip)
-					if num, ok := stale[ip]; ok {
-						stale[ip] = num + 1
-					} else {
-						stale[ip] = 1
-					}
-				}
-			}
 		}
 	}
-}
-
-func convertString(str string) bytes.Buffer {
-	b := *bytes.NewBuffer(make([]byte, 0))
-	nul := []byte{0x0000}
-	for _, c := range str {
-		b.WriteRune(c)
-		b.Write(nul)
-	}
-	log.Output(1, sprintf("[DEBUG] Converted string %q to [% x] ", str, b.Bytes()))
-	return b
 }

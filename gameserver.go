@@ -12,6 +12,9 @@ const (
 	eventPlayerLeft = 2
 	eventPlayerInfo = 3
 	eventPlayerChat = 4
+	eventPlayerBoot = 5
+
+	eventServerTime = 6
 )
 
 // GameServer -
@@ -53,16 +56,21 @@ func IsNameIllegal(s string) bool {
 }
 
 func init() {
+	ipReString := "[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}"
 	gameEvents = append(gameEvents, regexp.MustCompile(
-		"^([0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}):[0-9]{1,5} is connecting...$"))
+		"^("+ipReString+"):[0-9]{1,5} is connecting...$"))
 	gameEvents = append(gameEvents, regexp.MustCompile(
 		"^(.{1,20}) has joined.$"))
 	gameEvents = append(gameEvents, regexp.MustCompile(
 		"^(.{1,20}) has left.$"))
 	gameEvents = append(gameEvents, regexp.MustCompile(
-		"^(.{1,20}) \\(([0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}):[0-9]{1,5}\\)$"))
+		"^(.{1,20}) \\(("+ipReString+"):[0-9]{1,5}\\)$"))
 	gameEvents = append(gameEvents, regexp.MustCompile(
 		"^<(.{1,20})> (.*)$"))
+	gameEvents = append(gameEvents, regexp.MustCompile(
+		"^("+ipReString+"):[0-9]{1,5} was booted: (.*)$"))
+	gameEvents = append(gameEvents, regexp.MustCompile(
+		"^Time: (.?:..)([AP]M)$"))
 
 	illegalNamesRe = append(illegalNamesRe, regexp.MustCompile(
 		"^(\\s$|^[<>\\[\\]\\(\\)\\|\\]|[<>\\[\\]\\(\\)\\|\\]$|[aA]dmin|[sS]ystem|[sS]erver|[sS]uper[aA]dmin)"))

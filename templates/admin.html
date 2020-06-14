@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<h1>{{.Worldname}}</h1>
+		<link rel="stylesheet" href="https://unpkg.com/@blaze/css@9.2.0/dist/blaze/blaze.css">
+		<script src="static/serverapi.js"></script>
+	</head>
+	<body>
+		<h2>Players: {{.PlayerCount}}</h2>
+		{{- range .Players}}
+			<button id="kickPlayer" class="c-button u-xmedium" type="button" value="{{.Name}}" onclick="kickPlayer(this.value)">
+				Kick
+			</button>
+			{{.Name}}: {{.IP.String}}
+			<br>
+		{{- end}}
+		<h2>Message Server</h2>
+		<div class="c-input-group" >
+			<div id="send-server-msg" class="o-field">
+				<input id="server-input" class="c-field" placeholder="Message..." oninput="verifyMessage(this);">
+			</div>
+			<button class="c-button c-button--brand" onclick="sendMessage()">
+				Send
+			</button>
+		</div>
+	</body>
+</html>
