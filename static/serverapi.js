@@ -4,6 +4,9 @@ function getElementInsideContainer(pID, chID) {
 	return (parent.id && parent.id === pID) ? elm : {};
 }
 
+function resetElement(e) {
+	e.value = null
+}
 function kickPlayer(plr) {
 	var xhttp = new XMLHttpRequest();
 
@@ -26,7 +29,6 @@ function banPlayer(plr) {
 	xhttp.onreadystatechange = function() {
 		if (xhttp.readyState == 4 && xhttp.status == 200) {
 			console.log("Banned player: "+plr)
-			
 		} else if (xhttp.status == 403) {
 			console.log("Failed to ban player (not found): "+plr)
 		}
@@ -45,6 +47,8 @@ function setMOTD() {
 		if (xhttp.readyState == 4 && xhttp.status == 200) {
 			console.log("Setting MOTD: "+data.value)	
 		}
+
+		resetElement(data)
 	}
 
 	xhttp.open("GET", "/api/server/motd/"+data.value,true);
@@ -58,8 +62,10 @@ function setPassword() {
 
 	xhttp.onreadystatechange = function() {
 		if (xhttp.readyState == 4 && xhttp.status == 200) {
-			console.log("Setting password: "+data.value)	
+			console.log("Setting password: "+data.value)
 		}
+
+		resetElement(data)
 	}
 
 	xhttp.open("GET", "/api/server/password/"+data.value,true);
@@ -74,8 +80,10 @@ function sendMessage() {
 	if (data.classList.contains("c-field--success")) {
 		xhttp.onreadystatechange = function() {
 			if (xhttp.readyState == 4 && xhttp.status == 200) {
-				console.log("Sent message: "+data.value)	
+				console.log("Sent message: "+data.value)
 			}
+
+			resetElement(data)
 		}
 
 		xhttp.open("GET", "/api/server/say/"+data.value,true);
@@ -111,6 +119,10 @@ function verifyMessage(elm, min, max) {
 
 function startServer() {
 	console.log("Starting server...")
+}
+
+function restartServer() {
+	console.log("Restarting server...")
 }
 
 function stopServer() {

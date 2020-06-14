@@ -86,6 +86,7 @@ func (s *TerrariaServer) Start() error {
 	s.commandqueue = make(chan string, 500)
 	s.commandcount = 0
 	s.commandqueuemax = 500
+	s.MOTD = "<default>"
 
 	ready := make(chan struct{})
 
@@ -113,8 +114,8 @@ func (s *TerrariaServer) Start() error {
 
 	// Output commands that we'll use to populate the objects DB
 	SendCommand("seed", s)
-	SendCommand("password", s)
 	SendCommand("version", s)
+	SendCommand("password", s)
 
 	return nil
 }
@@ -312,7 +313,15 @@ func superviseTerrariaOut(s *TerrariaServer, ready chan struct{}) {
 			ready <- struct{}{}
 
 		default:
+			// eventPlayerChat and eventConnection are likely to be the most
+			// common events that need to be processed, so putting those on
+			// top of the switch
 			switch e := EventType(out, s); e {
+			case eventPlayerChat:
+				m := gameEvents[e].FindStringSubmatch(out)
+				s.NewChatMessage(m[2], m[1])
+				logOut(s, out)
+
 			case eventConnection:
 				re := gameEvents[e]
 				m := re.FindStringSubmatch(out)
@@ -335,11 +344,6 @@ func superviseTerrariaOut(s *TerrariaServer, ready chan struct{}) {
 				if IsNameIllegal(plr.Name()) {
 					plr.Kick("Name is not allowed")
 				}
-
-			case eventPlayerChat:
-				m := gameEvents[e].FindStringSubmatch(out)
-				s.NewChatMessage(m[2], m[1])
-				logOut(s, out)
 
 			case eventPlayerBoot:
 				m := gameEvents[e].FindStringSubmatch(out)

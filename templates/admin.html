@@ -9,9 +9,7 @@
 	</head>
 	<body>
 		<div class="c-card u-highest">
-			<div class="c-card__item c-card__item--brand">
-				Server Information
-			</div>
+			<div class="c-card__item c-card__item--brand">Server Information</div>
 			<div class="c-input-group c-card__item">
 				Game Version: {{.Version}}
 			</div>
@@ -28,8 +26,18 @@
 		<div class="c-card u-highest">
 			<div class="c-card__item c-card__item--brand">
 				Manage Server
-				<button class="u-right c-badge c-badge--success" onclick="startServer()">Start</button>
-				<button class="u-right c-badge c-badge--error" onclick="stopServer()">Stop</button>
+				<button class="u-right c-badge c-badge--success c-badget hideme">hidden</button>
+				<button class="u-right c-badge c-badge--warning c-badge--forceright" onclick="restartServer()">Restart</button>
+				<button class="u-right c-badge c-badge--error c-badge--forceright" onclick="stopServer()">Stop</button>
+				<button class="u-right c-badge c-badge--success c-badge--forceright" onclick="startServer()">Start</button>
+				<style>
+				.c-badge--forceright {
+					float: right;
+				}
+				.hideme {
+					visibility: hidden;
+				}
+				</style>
 			</div>
 
 			<div class="c-input-group c-card__item" id="send-server-div" >
@@ -76,10 +84,13 @@
 			</div>
 			{{- if gt .PlayerCount 0 }}
 				{{- range $i, $p := .Players}}
-				<div class="c-card__item--brand c-input-group">
-					<input class="c-field" value="{{ $p.Name}} - {{$p.IP.String -}}" readonly>
-						<button id="kickPlayer" class="c-input-group c-button c-button--warning u-right" type="button" value="{{$p.Name}}" onclick="kickPlayer(this.value)">Kick</button>
-						<button id="kickPlayer" class="c-input-group c-button c-button--error u-right" type="button" value="{{$p.Name}}" onclick="banPlayer(this.value)">Ban</button>
+				<div class="c-card__item c-input-group">
+					<input class="c-field" value="{{$p.Name}}" readonly>
+					<span class="c-input-group">
+						<button class="c-input-group c-button c-button--brand">{{$p.IP.String}}</button>
+						<button class="c-input-group c-button c-button--warning" type="button" value="{{$p.Name}}" onclick="kickPlayer(this.value)">Kick</button>
+						<button class="c-input-group c-button c-button--error" type="button" value="{{$p.Name}}" onclick="banPlayer(this.value)">Ban</button>
+					</span>
 				</div>
 				{{- end}}
 			{{- end}}

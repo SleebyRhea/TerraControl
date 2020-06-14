@@ -21,11 +21,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	SendCommand("help", ts)
-	SendCommand("password 123123", ts)
-	SendCommand("motd Welcome!", ts)
-	SendCommand("motd", ts)
-
 	// https://stackoverflow.com/questions/43601359/how-do-i-serve-css-and-js-in-go
 	// Am thief. Credit to @RayfenWindspear :D
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
