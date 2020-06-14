@@ -13,8 +13,13 @@ const (
 	eventPlayerInfo = 3
 	eventPlayerChat = 4
 	eventPlayerBoot = 5
+	eventPlayerBan  = 6
 
-	eventServerTime = 6
+	eventServerTime = 7
+	eventServerSeed = 8
+	eventServerMOTD = 9
+	eventServerPass = 10
+	eventServerVers = 11
 )
 
 // GameServer -
@@ -70,8 +75,17 @@ func init() {
 	gameEvents = append(gameEvents, regexp.MustCompile(
 		"^("+ipReString+"):[0-9]{1,5} was booted: (.*)$"))
 	gameEvents = append(gameEvents, regexp.MustCompile(
+		"^("+ipReString+"):[0-9]{1,5} was banned: (.*)$"))
+	gameEvents = append(gameEvents, regexp.MustCompile(
 		"^Time: (.?:..)([AP]M)$"))
-
+	gameEvents = append(gameEvents, regexp.MustCompile(
+		"^World Seed: (.*)$"))
+	gameEvents = append(gameEvents, regexp.MustCompile(
+		"^MOTD: (.*)$"))
+	gameEvents = append(gameEvents, regexp.MustCompile(
+		"^Password: (.*)$"))
+	gameEvents = append(gameEvents, regexp.MustCompile(
+		"^Terraria Server v(.*)$"))
 	illegalNamesRe = append(illegalNamesRe, regexp.MustCompile(
 		"^(\\s$|^[<>\\[\\]\\(\\)\\|\\]|[<>\\[\\]\\(\\)\\|\\]$|[aA]dmin|[sS]ystem|[sS]erver|[sS]uper[aA]dmin)"))
 }

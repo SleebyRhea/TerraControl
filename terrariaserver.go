@@ -53,9 +53,16 @@ type TerrariaServer struct {
 	players  []*Player
 	messages [][2]string
 
-	// Game Info
+	// Config
 	worldfile  string
 	configfile string
+
+	// Game State
+	Password string
+	Version  string
+	Seed     string
+	MOTD     string
+	Time     string
 }
 
 // Start -
@@ -97,6 +104,12 @@ func (s *TerrariaServer) Start() error {
 	}
 
 	<-ready
+
+	// Output commands that we'll use to populate the objects DB
+	SendCommand("seed", s)
+	SendCommand("password", s)
+	SendCommand("version", s)
+
 	return nil
 }
 
@@ -248,13 +261,6 @@ func (s *TerrariaServer) NewChatMessage(msg, name string) {
 	s.messages = append(s.messages, [2]string{name, msg})
 }
 
-// Time - Returns the current game time
-// TODO: Actually finish this.
-func (s *TerrariaServer) Time() string {
-	SendCommand("time", s)
-	return ""
-}
-
 // NewTerrariaServer -
 func NewTerrariaServer(path string, args ...string) *TerrariaServer {
 	t := &TerrariaServer{
@@ -284,10 +290,13 @@ func superviseTerrariaOut(s *TerrariaServer, ready chan struct{}) {
 	go superviseTerrariaConnects(s, cch, pch)
 
 	for scanner.Scan() {
-		// Strip the prefix that terraria outputs on a newline
+		// Strip the prefix that terraria outputs on a newline. Terraria sometimes
+		// throws extras, so just loop until theyre all gone.
 		out := scanner.Text()
-		out = strings.TrimPrefix(out, ":")
-		out = strings.TrimPrefix(out, " ")
+		for strings.HasPrefix(out, ":") {
+			out = strings.TrimPrefix(out, ":")
+			out = strings.TrimSpace(out)
+		}
 
 		switch out {
 		case "Server started":
@@ -328,6 +337,29 @@ func superviseTerrariaOut(s *TerrariaServer, ready chan struct{}) {
 			case eventPlayerBoot:
 				m := gameEvents[e].FindStringSubmatch(out)
 				LogInfo(s, sprintf("Failed connection: %s [%s]", m[1], m[2]))
+
+			case eventPlayerBan:
+				logOut(s, out)
+				// m := gameEvents[e].FindStringSubmatch(out)
+				// LogInfo(s, sprintf("Banned IP: %s [%s]", m[1], m[2]))
+			case eventServerTime:
+				logOut(s, out)
+
+			case eventServerSeed:
+				m := gameEvents[e].FindStringSubmatch(out)
+				s.Seed = m[1]
+
+			case eventServerMOTD:
+				m := gameEvents[e].FindStringSubmatch(out)
+				s.MOTD = m[1]
+
+			case eventServerPass:
+				m := gameEvents[e].FindStringSubmatch(out)
+				s.Password = m[1]
+
+			case eventServerVers:
+				m := gameEvents[e].FindStringSubmatch(out)
+				s.Version = m[1]
 
 			default:
 				// Just log it and move on

@@ -5,23 +5,69 @@
 		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css">
 		<link rel="stylesheet" href="https://unpkg.com/@blaze/css@9.2.0/dist/blaze/blaze.css">
 		<script src="static/serverapi.js"></script>
-		<meta http-equiv="refresh" content="10">
+		<meta http-equiv="refresh" content="30">
 	</head>
 	<body>
+		<div class="c-card u-highest">
+			<div class="c-card__item c-card__item--brand">
+				Server Information
+			</div>
+			<div class="c-input-group c-card__item">
+				Game Version: {{.Version}}
+			</div>
+			<div class="c-input-group c-card__item">
+				Password: {{.Password}}
+			</div>
+			<div class="c-input-group c-card__item">
+				World Seed: {{.Seed}}
+			</div>
+			<div class="c-input-group c-card__item">
+				Message of the Day: {{.MOTD}}
+			</div>
+		</div>
 		<div class="c-card u-highest">
 			<div class="c-card__item c-card__item--brand">
 				Manage Server
 				<button class="u-right c-badge c-badge--success" onclick="startServer()">Start</button>
 				<button class="u-right c-badge c-badge--error" onclick="stopServer()">Stop</button>
 			</div>
-			<div class="c-input-group" id="send-server-div" >
-				<div id="send-server-input" class="o-field">
-					<input type="text" id="input" class="c-field" placeholder="Message..." oninput="verifyMessage(this);">
+
+			<div class="c-input-group c-card__item" id="send-server-div" >
+				<div id="send-server-motd" class="o-field">
+					<input type="text" id="send-server-motd-input" class="c-field" placeholder="Set Message of the Day...">
 				</div>
-				<button id="send-server-button" class="c-button c-button--error" onclick="sendMessage()">
-					Send
+				<button id="send-server-motd-button" class="c-button c-button--brand" onclick="setMOTD();">
+					Submit
 				</button>
 			</div>
+
+			<div class="c-input-group c-card__item" id="send-server-div" >
+				<div id="send-server-password" class="o-field">
+					<input type="text" id="send-server-password-input" class="c-field" placeholder="Set Password...">
+				</div>
+				<button id="send-server-password-button" class="c-button c-button--brand" onclick="setPassword();">
+					Submit
+				</button>
+			</div>
+
+			<div class="c-input-group c-card__item" id="send-server-div" >
+				<div id="send-server-message" class="o-field">
+					<input type="text" id="send-server-message-input" class="c-field" placeholder="Send Message..." oninput="verifyMessage(this, 1, 64);">
+				</div>
+				<button id="send-server-message-button" class="c-button c-button--brand" onclick="sendMessage();">
+					Submit
+				</button>
+			</div>
+
+			<footer class="c-cart__footer c-card__footer--block">
+				<div class="c-input-group">
+					<button onclick="serverTime('dawn');" class="c-button c-button--block c-button--info">Dawn</button>
+					<button onclick="serverTime('noon');" class="c-button c-button--block c-button--success">Noon</button>
+					<button onclick="serverTime('dusk');" class="c-button c-button--block c-button--warning">Dusk</button>
+					<button onclick="serverTime('midnight');" class="c-button c-button--block c-button--brand">Midnight</button>
+					<button onclick="settleLiquids();" class="c-button c-button--block c-button--error">Settle Liquids</button>
+				</div>
+			</footer>
 		</div>
 
 		<div class="c-card u-highest">

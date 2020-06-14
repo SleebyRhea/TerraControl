@@ -20,9 +20,40 @@ function kickPlayer(plr) {
 	xhttp.send()
 };
 
+function setMOTD() {
+	var xhttp = new XMLHttpRequest();
+	data = getElementInsideContainer("send-server-motd",
+		"send-server-motd-input");
+
+	xhttp.onreadystatechange = function() {
+		if (xhttp.readyState == 4 && xhttp.status == 200) {
+			console.log("Setting MOTD: "+data.value)	
+		}
+	}
+
+	xhttp.open("GET", "/api/server/motd/"+data.value,true);
+	xhttp.send()
+}
+
+function setPassword() {
+	var xhttp = new XMLHttpRequest();
+	data = getElementInsideContainer("send-server-password",
+		"send-server-password-input");
+
+	xhttp.onreadystatechange = function() {
+		if (xhttp.readyState == 4 && xhttp.status == 200) {
+			console.log("Setting password: "+data.value)	
+		}
+	}
+
+	xhttp.open("GET", "/api/server/password/"+data.value,true);
+	xhttp.send()
+}
+
 function sendMessage() {
 	var xhttp = new XMLHttpRequest();
-	data = getElementInsideContainer("send-server-input", "input");
+	data = getElementInsideContainer("send-server-message",
+		"send-server-message-input");
 
 	if (data.classList.contains("c-field--success")) {
 		xhttp.onreadystatechange = function() {
@@ -36,21 +67,28 @@ function sendMessage() {
 	}
 }
 
-function verifyMessage(elm) {
-	i = getElementInsideContainer("send-server-div", "send-server-button")
-	if (elm.value.length > 64 || elm.value.length == 0) {
+function verifyMessage(elm, min, max) {
+	i = getElementInsideContainer(
+		"send-server-div",
+		"send-server-message-button")
+
+	if (i.classList.contains("c-button--brand")) {
+		i.classList.remove("c-button--brand")
+	}
+
+	if (elm.value.length > max || elm.value.length < min) {
 		elm.classList.remove("c-field--success")
 		elm.classList.add("c-field--error")
+		i.classList.add("c-button--error")
 		if (i.classList.contains("c-button--success")) {
 			i.classList.remove("c-button--success")
-			i.classList.add("c-button--error")
 		}
 	} else {
 		elm.classList.remove("c-field--error")
 		elm.classList.add("c-field--success")
+		i.classList.add("c-button--success")
 		if (i.classList.contains("c-button--error")) {
 			i.classList.remove("c-button--error")
-			i.classList.add("c-button--success")
 		}
 	}
 }
@@ -58,6 +96,52 @@ function verifyMessage(elm) {
 function startServer() {
 	console.log("Starting server...")
 }
+
 function stopServer() {
 	console.log("Stopping server...")
+}
+
+function settleLiquids() {
+	var xhttp = new XMLHttpRequest();
+
+	xhttp.onreadystatechange = function() {
+		if (xhttp.readyState == 4 && xhttp.status == 200) {
+			console.log("Settling server liquids")
+		} else {
+			console.log("Failed to run settle command")
+		}
+	}
+
+	xhttp.open("GET", "/api/server/settle", true);
+	xhttp.send()
+}
+
+function serverTime(time) {
+	var xhttp = new XMLHttpRequest();
+
+	if (time) {
+		xhttp.onreadystatechange = function() {
+			if (xhttp.readyState == 4 && xhttp.status == 200) {
+				console.log("Setting time to: "+time)
+				
+			} else if (xhttp.status == 403) {
+				console.log("Failed to run time command")
+			}
+		}
+
+		xhttp.open("GET", "/api/server/time/"+time, true);
+		xhttp.send()
+	} else {
+		xhttp.onreadystatechange = function() {
+			if (xhttp.readyState == 4 && xhttp.status == 200) {
+				console.log("Getting server time: ")
+				
+			} else {
+				console.log("Failed to run time command")
+			}
+		}
+
+		xhttp.open("GET", "/api/server/time", true);
+		xhttp.send()
+	}
 }
