@@ -320,7 +320,7 @@ func superviseTerrariaOut(s *TerrariaServer, ready chan struct{}) {
 			case eventPlayerChat:
 				m := gameEvents[e].FindStringSubmatch(out)
 				s.NewChatMessage(m[2], m[1])
-				logOut(s, out)
+				logChat(s, out)
 
 			case eventConnection:
 				re := gameEvents[e]

@@ -45,74 +45,96 @@ func main() {
 			Version:     ts.Version,
 			MOTD:        ts.MOTD,
 		}
+
 		if err := t.Execute(w, data); err != nil {
 			log.Output(1, err.Error())
+			LogHTTP(ts, 500, r)
 		}
+
+		LogHTTP(ts, 200, r)
 	})
 
 	http.HandleFunc("/api/player/kick/", func(w http.ResponseWriter, r *http.Request) {
 		LogInfo(ts, "Received kick request: "+r.RequestURI)
 		pn := strings.TrimPrefix(r.RequestURI, "/api/player/kick/")
+		rc := 403
 
 		if plr := ts.Player(pn); plr != nil {
 			plr.Kick("Kicked by the internet")
-			w.WriteHeader(200)
+			rc = 200
 		} else {
-			w.WriteHeader(404)
+			rc = 404
 		}
+
+		w.WriteHeader(rc)
+		LogHTTP(ts, rc, r)
 	})
 
 	http.HandleFunc("/api/player/ban/", func(w http.ResponseWriter, r *http.Request) {
 		pn := strings.TrimPrefix(r.RequestURI, "/api/player/ban/")
-		LogInfo(ts, "Received ban request: "+r.RequestURI)
+		var (
+			rc  = 403
+			msg = "Banned from the internet"
+		)
 
 		if plr := ts.Player(pn); plr != nil {
-			plr.Ban("Banned from the internet")
-			w.WriteHeader(200)
+			rc = 200
+			plr.Ban(msg)
 		} else {
-			w.WriteHeader(404)
+			rc = 404
 		}
+
+		LogHTTP(ts, rc, r)
+		w.WriteHeader(rc)
 	})
 
 	http.HandleFunc("/api/server/password/", func(w http.ResponseWriter, r *http.Request) {
 		u, _ := url.Parse(r.RequestURI)
 		p := strings.TrimPrefix(u.Path, "/api/server/password")
 		p = strings.TrimPrefix(p, "/")
-		LogInfo(ts, "Received password request: "+p)
 
 		if p == "" {
 			w.WriteHeader(200)
-			w.Write([]byte(ts.Password))
 		} else {
-			SendCommand("password "+p, ts)
 			w.WriteHeader(200)
+			w.Write([]byte(ts.Password))
+			SendCommand("password "+p, ts)
 		}
+
+		LogHTTP(ts, 200, r)
 	})
 
-	http.HandleFunc("/api/server/start", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/api/server/start/", func(w http.ResponseWriter, r *http.Request) {
+		LogHTTP(ts, 404, r)
+		w.WriteHeader(404)
 	})
 
-	http.HandleFunc("/api/server/stop", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/api/server/stop/", func(w http.ResponseWriter, r *http.Request) {
+		LogHTTP(ts, 404, r)
+		w.WriteHeader(404)
 	})
 
 	http.HandleFunc("/api/server/say/", func(w http.ResponseWriter, r *http.Request) {
 		LogOutput(ts, "Sending message: "+r.RequestURI)
 		u, _ := url.Parse(r.RequestURI)
 		SendCommand("say "+strings.TrimPrefix(u.Path, "/api/server/say/"), ts)
+		LogHTTP(ts, 200, r)
 	})
 
 	http.HandleFunc("/api/server/motd/", func(w http.ResponseWriter, r *http.Request) {
 		u, _ := url.Parse(r.RequestURI)
 		m := strings.TrimPrefix(u.Path, "/api/server/motd")
 		m = strings.TrimPrefix(m, "/")
-		LogInfo(ts, "Received motd request: "+m)
 
+		w.WriteHeader(200)
 		if m == "" {
 			w.Write([]byte(ts.MOTD))
 		} else {
 			SendCommand("motd "+m, ts)
 			SendCommand("motd", ts)
 		}
+
+		LogHTTP(ts, 200, r)
 	})
 
 	http.HandleFunc("/api/server/time/", func(w http.ResponseWriter, r *http.Request) {
@@ -133,7 +155,7 @@ func main() {
 		case "/midnight":
 			set = "midnight"
 		default:
-			LogDebug(ts, "Invalid time sent: "+t)
+			LogHTTP(ts, 404, r)
 			w.WriteHeader(404)
 			return
 		}
@@ -142,12 +164,16 @@ func main() {
 			SendCommand("say Setting time to "+set, ts)
 			SendCommand(set, ts)
 		}
+
+		w.WriteHeader(200)
+		LogHTTP(ts, 200, r)
 	})
 
-	http.HandleFunc("/api/server/settle", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/api/server/settle/", func(w http.ResponseWriter, r *http.Request) {
 		LogInfo(ts, "Settling liquids")
 		SendCommand("settle", ts)
 		w.WriteHeader(200)
+		LogHTTP(ts, 200, r)
 	})
 
 	go func() { log.Fatal(http.ListenAndServe(":8080", nil)) }()
