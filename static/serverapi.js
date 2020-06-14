@@ -14,7 +14,7 @@ function getElementInsideContainer(pID, chID) {
 	return (parent.id && parent.id === pID) ? elm : {};
 }
 
-var DEBUG = false
+var DEBUG = true
 var APIBASE = "/api/"
 var APIRE = '\\/api\\/'
 
@@ -45,7 +45,6 @@ class TerraControlAPI {
 		if (args.length > 0) {
 			for (var v of Array.from(args)) {
 				if (v != "" && v != undefined) {
-					console.log(v)
 					r = r + v;
 				}
 			}
@@ -86,13 +85,13 @@ class TerraControlAPI {
 
 	onsuccess() {
 		if (DEBUG) {
-			console.log("TerraControl API: Unimplemented: oncomplete: "+this.request)
+			console.log("TerraControl API: Unimplemented: onsuccess: "+this.request)
 		}
 	}
 
 	onredirect() {
 		if (DEBUG) {
-			console.log("TerraControl API: Unimplemented: oncomplete: "+this.request)
+			console.log("TerraControl API: Unimplemented: onredirect: "+this.request)
 		}
 	}
 
@@ -116,16 +115,17 @@ class TerraControlAPI {
 		this.request = TerraControlAPI.RequestBuilder(this.scope, this.obj,
 			this.getdata(), data);
 
-		console.log("Making request: "+this.request)
+		if (DEBUG) {
+			console.log("Making request: "+this.request)
+		}
 		var xhttp = new XMLHttpRequest();
 
 		if (this.onprecall) {
 			xhttp.onreadystatechange = function() {
 				if (xhttp.readyState == 4) {
 					var r = TerraControlAPI.Requester(this.responseURL)
+					r.oncomplete(this.status)
 					switch (true) {
-						case true:
-							r.oncomplete(this.status);
 						case is2XX(this.status):
 							r.onsuccess(this.status);
 							break;
@@ -153,27 +153,19 @@ class TerraControlAPI {
 var scopes = new Map()
 
 function is2XX(r) {
-	return (r > 299) ? false
-		 : (r < 200) ? false
-		 : true
+	return (r <= 299 && r >= 200)
 }
 
 function is3XX(r) {
-	return (r > 399) ? false
-		 : (r < 300) ? false
-		 : true
+	return (r <= 399 && r >= 300)
 }
 
 function is4XX(r) {
-	return (r > 499) ? false
-		 : (r < 400) ? false
-		 : true
+	return (r <= 499 && r >= 400)
 }
 
 function is5XX(r) {
-	return (r > 599) ? false
-		 : (r < 500) ? false
-		 : true
+	return (r <= 599 && r >= 500)
 }
 
 // BEGIN
@@ -192,6 +184,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	serverSettle   = new TerraControlAPI("server", "settle")
 	serverPassword = new TerraControlAPI("server", "password")
 
+	// serverSay
 	serverSay.onprecall = function() {
 		d = getElementInsideContainer("send-server-message",
 			"send-server-message-input");
@@ -213,6 +206,8 @@ document.addEventListener('DOMContentLoaded', () => {
 		resetElement(d)
 	}
 
+
+	// serverMOTD
 	serverMOTD.getdata = function() {
 		return getElementInsideContainer("send-server-motd",
 		"send-server-motd-input").value;
@@ -224,6 +219,8 @@ document.addEventListener('DOMContentLoaded', () => {
 		resetElement(d); 
 	}
 
+
+	// serverPassword
 	serverPassword.getdata = function() {
 		return getElementInsideContainer("send-server-password",
 		"send-server-password-input").value;

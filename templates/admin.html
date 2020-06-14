@@ -32,10 +32,10 @@
 		<div class="c-card u-highest">
 			<div class="c-card__item c-card__item--brand">
 				Manage Server
-				<button class="u-right c-badge c-badge--success c-badget hideme">hidden</button>
-				<button class="u-right c-badge c-badge--warning c-badge--forceright c-badge--right" onclick="serverRestart()">Restart</button>
-				<button class="u-right c-badge c-badge--error c-badge--forceright c-badge--center" onclick="serverStop.call()">Stop</button>
-				<button class="u-right c-badge c-badge--success c-badge--forceright c-badge--left" onclick="serverStart.call()">Start</button>
+				<button class="u-right c-badge c-badge c-badget hideme">hidden</button>
+				<button class="u-right c-badge c-badge c-badge--forceright c-badge--right" onclick="serverRestart()">Restart</button>
+				<button class="u-right c-badge c-badge c-badge--forceright c-badge--center" onclick="serverStop.call()">Stop</button>
+				<button class="u-right c-badge c-badge c-badge--forceright c-badge--left" onclick="serverStart.call()">Start</button>
 			</div>
 
 			<div class="c-input-group c-card__item" id="send-server-div" >
@@ -67,11 +67,11 @@
 
 			<footer class="c-cart__footer c-card__footer--block">
 				<div class="c-input-group">
-					<button onclick="serverTime.call('dawn');" class="c-button c-button--block c-button--info"><b>Dawn</b></button>
-					<button onclick="serverTime.call('noon');" class="c-button c-button--block c-button--success"><b>Noon</b></button>
-					<button onclick="serverTime.call('dusk');" class="c-button c-button--block c-button--warning"><b>Dusk</b></button>
-					<button onclick="serverTime.call('midnight');" class="c-button c-button--block c-button--brand"><b>Midnight</b></button>
-					<button onclick="serverSettle.call();" class="c-button c-button--block c-button--error"><b>Settle Liquids</b></button>
+					<button onclick="serverTime.call('dawn');" class="c-button c-button--block c-button--ghost c-button--brand"><b>Dawn</b></button>
+					<button onclick="serverTime.call('noon');" class="c-button c-button--block c-button--ghost c-button--brand"><b>Noon</b></button>
+					<button onclick="serverTime.call('dusk');" class="c-button c-button--block c-button--ghost c-button--brand"><b>Dusk</b></button>
+					<button onclick="serverTime.call('midnight');" class="c-button c-button--block c-button--ghost c-button--brand"><b>Midnight</b></button>
+					<button onclick="serverSettle.call();" class="c-button c-button--block c-button--ghost c-button--brand"><b>Settle Liquids</b></button>
 				</div>
 			</footer>
 		</div>
