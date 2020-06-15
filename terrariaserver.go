@@ -21,24 +21,29 @@ type TerrariaPlayer struct {
 	server *TerrariaServer
 }
 
+// SetIP - Sets or updates a players IP address
+func (p TerrariaPlayer) SetIP(ips string) {
+	p.ip = net.ParseIP(ips)
+}
+
 // IP - Returns the IP address that the player used to connect this session
-func (p *TerrariaPlayer) IP() net.IP {
+func (p TerrariaPlayer) IP() net.IP {
 	return p.ip
 }
 
 // Name - Return the name of the player object
-func (p *TerrariaPlayer) Name() string {
+func (p TerrariaPlayer) Name() string {
 	return p.name
 }
 
 // Kick - Kick a player
-func (p *TerrariaPlayer) Kick(r string) {
+func (p TerrariaPlayer) Kick(r string) {
 	SendCommand(sprintf("say Kicking player: \"%s\". %s.", p.Name(), r), p.server)
 	SendCommand("kick "+p.Name(), p.server)
 }
 
 // Ban - Ban a player
-func (p *TerrariaPlayer) Ban(r string) {
+func (p TerrariaPlayer) Ban(r string) {
 	SendCommand(sprintf("say Banning player: \"%s\". %s.", p.Name(), r), p.server)
 	SendCommand("ban "+p.Name(), p.server)
 }
@@ -249,29 +254,21 @@ func (s *TerrariaServer) Player(n string) Player {
 // Players - Returns the players that are currently in-game
 func (s *TerrariaServer) Players() []Player {
 	v := make([]Player, 0)
-	// for _, t := range s.players {
-	// 	v = append(v, *t)
-	// }
+	for _, t := range s.players {
+		v = append(v, *t)
+	}
 	return v
 }
 
 // NewPlayer - Add a player to the list of players if it isn't already present
 func (s *TerrariaServer) NewPlayer(n, ips string) Player {
-	var (
-		plr *TerrariaPlayer
-		// ok  bool
-	)
-
-	// if plr, ok = s.Player(n).(TerrariaPlayer); plr != nil {
-	// 	if !ok {
-	// 		panic("Invalid Player tracked in TerrariaServer!")
-	// 	}
-	// }
-
-	if plr == nil {
-		plr = &TerrariaPlayer{name: n, server: s}
-		s.players = append(s.players, plr)
+	if p := s.Player(n); p != nil {
+		p.SetIP(ips)
+		return p
 	}
+
+	plr := &TerrariaPlayer{name: n, server: s}
+	s.players = append(s.players, plr)
 
 	plr.ip = net.ParseIP(ips)
 	LogInfo(s, "New player logged: "+plr.Name())

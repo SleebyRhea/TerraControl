@@ -28,6 +28,7 @@ type Playable interface {
 // regarding its connection tracked
 type Player interface {
 	Name() string
+	SetIP(string)
 	Kick(string)
 	Ban(string)
 	IP() net.IP
