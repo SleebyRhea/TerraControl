@@ -11,31 +11,34 @@ import (
 	"time"
 )
 
-// Player - Defines a player that has connected to the server at some point
-type Player struct {
+// TerrariaPlayer - Defines a player that has connected to the server at some point
+type TerrariaPlayer struct {
+	// Make sure we implement Player
+	Player
+
 	ip     net.IP
 	name   string
 	server *TerrariaServer
 }
 
 // IP - Returns the IP address that the player used to connect this session
-func (p *Player) IP() net.IP {
+func (p *TerrariaPlayer) IP() net.IP {
 	return p.ip
 }
 
 // Name - Return the name of the player object
-func (p *Player) Name() string {
+func (p *TerrariaPlayer) Name() string {
 	return p.name
 }
 
 // Kick - Kick a player
-func (p *Player) Kick(r string) {
+func (p *TerrariaPlayer) Kick(r string) {
 	SendCommand(sprintf("say Kicking player: \"%s\". %s.", p.Name(), r), p.server)
 	SendCommand("kick "+p.Name(), p.server)
 }
 
 // Ban - Ban a player
-func (p *Player) Ban(r string) {
+func (p *TerrariaPlayer) Ban(r string) {
 	SendCommand(sprintf("say Banning player: \"%s\". %s.", p.Name(), r), p.server)
 	SendCommand("ban "+p.Name(), p.server)
 }
@@ -56,7 +59,7 @@ type TerrariaServer struct {
 	commandqueuemax int
 
 	// PlayerInfo
-	players  []*Player
+	players  []*TerrariaPlayer
 	messages [][2]string
 
 	// Config
@@ -64,11 +67,11 @@ type TerrariaServer struct {
 	configfile string
 
 	// Game State
-	Password string
-	Version  string
-	Seed     string
-	MOTD     string
-	Time     string
+	password string
+	version  string
+	seed     string
+	motd     string
+	time     string
 }
 
 // Start -
@@ -86,7 +89,7 @@ func (s *TerrariaServer) Start() error {
 	s.commandqueue = make(chan string, 500)
 	s.commandcount = 0
 	s.commandqueuemax = 500
-	s.MOTD = "<default>"
+	s.motd = "<default>"
 
 	ready := make(chan struct{})
 
@@ -182,7 +185,7 @@ func (s *TerrariaServer) IsUp() bool {
 }
 
 /**********/
-/* Logger */
+/* Loggable */
 /**********/
 
 // UUID -
@@ -214,12 +217,26 @@ func (s *TerrariaServer) EnqueueCommand(c string) {
 	}
 }
 
+/*************/
+/* Versioned */
+/*************/
+
+// SetVersion - Sets the current version of the Terraria server
+func (s *TerrariaServer) SetVersion(v string) {
+	s.version = v
+}
+
+// Version - Return the version of the Terraria server
+func (s *TerrariaServer) Version() string {
+	return s.version
+}
+
 /********/
 /* Main */
 /********/
 
 // Player - Return a player object that matches the string given
-func (s *TerrariaServer) Player(n string) *Player {
+func (s *TerrariaServer) Player(n string) Player {
 	for _, p := range s.players {
 		if p.Name() == n {
 			return p
@@ -230,15 +247,29 @@ func (s *TerrariaServer) Player(n string) *Player {
 }
 
 // Players - Returns the players that are currently in-game
-func (s *TerrariaServer) Players() []*Player {
-	return s.players
+func (s *TerrariaServer) Players() []Player {
+	v := make([]Player, 0)
+	// for _, t := range s.players {
+	// 	v = append(v, *t)
+	// }
+	return v
 }
 
 // NewPlayer - Add a player to the list of players if it isn't already present
-func (s *TerrariaServer) NewPlayer(n, ips string) *Player {
-	var plr *Player
-	if plr = s.Player(n); plr == nil {
-		plr = &Player{name: n, server: s}
+func (s *TerrariaServer) NewPlayer(n, ips string) Player {
+	var (
+		plr *TerrariaPlayer
+		// ok  bool
+	)
+
+	// if plr, ok = s.Player(n).(TerrariaPlayer); plr != nil {
+	// 	if !ok {
+	// 		panic("Invalid Player tracked in TerrariaServer!")
+	// 	}
+	// }
+
+	if plr == nil {
+		plr = &TerrariaPlayer{name: n, server: s}
 		s.players = append(s.players, plr)
 	}
 
@@ -290,11 +321,10 @@ func NewTerrariaServer(path string, args ...string) *TerrariaServer {
 
 func superviseTerrariaOut(s *TerrariaServer, ready chan struct{}) {
 	LogDebug(s, "Started Terraria supervisor")
-	logOut := LogInit
 	scanner := bufio.NewScanner(s.Stdout)
-	cch := make(chan string, 0)
-	pch := make(chan string, 0)
 
+	cch := make(chan string, 0) // Initial Connection
+	pch := make(chan string, 0) // Player Login
 	go superviseTerrariaConnects(s, cch, pch)
 
 	for scanner.Scan() {
@@ -306,75 +336,28 @@ func superviseTerrariaOut(s *TerrariaServer, ready chan struct{}) {
 			out = strings.TrimSpace(out)
 		}
 
-		switch out {
-		case "Server started":
-			logOut(s, "Terraria server INIT completed")
-			logOut = LogOutput
-			ready <- struct{}{}
+		select {
+		// Once we're ready, start processing logs.
+		case <-ready:
+			e := GetEventFromString(out)
+			switch e.name {
+			case "EventConnection":
+				e.Handler(s, out, cch)
+			case "EventPlayerInfo":
+				e.Handler(s, out, pch)
+			default:
+				e.Handler(s, out, nil)
+			}
 
+		// Output as INIT until the server is ready
 		default:
-			// eventPlayerChat and eventConnection are likely to be the most
-			// common events that need to be processed, so putting those on
-			// top of the switch
-			switch e := EventType(out, s); e {
-			case eventPlayerChat:
-				m := gameEvents[e].FindStringSubmatch(out)
-				s.NewChatMessage(m[2], m[1])
-				logChat(s, out)
-
-			case eventConnection:
-				re := gameEvents[e]
-				m := re.FindStringSubmatch(out)
-				go func() {
-					cch <- m[1]
-					LogDebug(s, sprintf("Passed new connection information: %s", m[1]))
-				}()
-
-			case eventPlayerJoin:
-				SendCommand("playing", s)
-
-			case eventPlayerLeft:
-				name := strings.TrimSuffix(out, " has left.")
-				s.RemovePlayer(name)
-
-			case eventPlayerInfo:
-				go func() { pch <- out }()
-				m := gameEvents[e].FindStringSubmatch(out)
-				plr := s.NewPlayer(m[1], m[2])
-				if IsNameIllegal(plr.Name()) {
-					plr.Kick("Name is not allowed")
-				}
-
-			case eventPlayerBoot:
-				m := gameEvents[e].FindStringSubmatch(out)
-				LogInfo(s, sprintf("Failed connection: %s [%s]", m[1], m[2]))
-
-			case eventPlayerBan:
-				logOut(s, out)
-				// m := gameEvents[e].FindStringSubmatch(out)
-				// LogInfo(s, sprintf("Banned IP: %s [%s]", m[1], m[2]))
-			case eventServerTime:
-				logOut(s, out)
-
-			case eventServerSeed:
-				m := gameEvents[e].FindStringSubmatch(out)
-				s.Seed = m[1]
-
-			case eventServerMOTD:
-				m := gameEvents[e].FindStringSubmatch(out)
-				s.MOTD = m[1]
-
-			case eventServerPass:
-				m := gameEvents[e].FindStringSubmatch(out)
-				s.Password = m[1]
-
-			case eventServerVers:
-				m := gameEvents[e].FindStringSubmatch(out)
-				s.Version = m[1]
+			switch out {
+			case "Server started":
+				LogInit(s, "Terraria server INIT completed")
+				close(ready) //Close the channel to close this path
 
 			default:
-				// Just log it and move on
-				logOut(s, out)
+				LogInit(s, out)
 			}
 		}
 	}
@@ -383,7 +366,7 @@ func superviseTerrariaOut(s *TerrariaServer, ready chan struct{}) {
 func superviseTerrariaConnects(s *TerrariaServer, cch chan string, pch chan string) {
 	newconnections := make(map[string]time.Time)
 	stale := make(map[string]int)
-	conRe := gameEvents[eventPlayerInfo]
+	conRe := gameEventsMap["EventPlayerInfo"]
 
 	for {
 		select {
@@ -424,7 +407,7 @@ func superviseTerrariaConnects(s *TerrariaServer, cch chan string, pch chan stri
 
 		case plr := <-pch:
 			LogDebug(s, "Received player info: "+plr)
-			m := conRe.FindStringSubmatch(plr)
+			m := conRe.Capture.FindStringSubmatch(plr)
 			ip := m[2]
 			name := m[1]
 			if _, ok := newconnections[ip]; ok {

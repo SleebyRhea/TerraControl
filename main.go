@@ -14,7 +14,7 @@ import (
 )
 
 func main() {
-	ts := NewTerrariaServer("/home/andrew/1405/Windows/TerrariaServer.exe")
+	ts := NewTerrariaServer("/home/andrew/1405/Linux/TerrariaServer.exe")
 
 	if err := ts.Start(); err != nil {
 		log.Output(1, err.Error())
@@ -30,7 +30,7 @@ func main() {
 		t := template.Must(template.ParseFiles("templates/admin.html"))
 		data := struct {
 			Worldname   string
-			Players     []*Player
+			Players     []Player
 			PlayerCount int
 			Password    string
 			Seed        string
@@ -40,10 +40,10 @@ func main() {
 			Worldname:   "test",
 			Players:     ts.Players(),
 			PlayerCount: len(ts.Players()),
-			Password:    ts.Password,
-			Seed:        ts.Seed,
-			Version:     ts.Version,
-			MOTD:        ts.MOTD,
+			Password:    ts.password,
+			Seed:        ts.seed,
+			Version:     ts.Version(),
+			MOTD:        ts.motd,
 		}
 
 		if err := t.Execute(w, data); err != nil {
@@ -97,7 +97,7 @@ func main() {
 			w.WriteHeader(200)
 		} else {
 			w.WriteHeader(200)
-			w.Write([]byte(ts.Password))
+			w.Write([]byte(ts.password))
 			SendCommand("password "+p, ts)
 		}
 
@@ -128,7 +128,7 @@ func main() {
 
 		w.WriteHeader(200)
 		if m == "" {
-			w.Write([]byte(ts.MOTD))
+			w.Write([]byte(ts.motd))
 		} else {
 			SendCommand("motd "+m, ts)
 			SendCommand("motd", ts)
@@ -198,10 +198,10 @@ func main() {
 
 func convertString(str string) bytes.Buffer {
 	b := *bytes.NewBuffer(make([]byte, 0))
-	nul := []byte{0x0000}
+	// nul := []byte{0x0000}
 	for _, c := range str {
 		b.WriteRune(c)
-		b.Write(nul)
+		// b.Write(nul)
 	}
 	log.Output(1, sprintf("[DEBUG] Converted string %q to [% x] ", str, b.Bytes()))
 	return b

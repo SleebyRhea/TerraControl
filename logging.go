@@ -27,8 +27,8 @@ const (
 
 var sprintf = fmt.Sprintf
 
-// Logger - Interface that details an object that can log
-type Logger interface {
+// Loggable - Interface that details an object that can log
+type Loggable interface {
 	Loglevel() int
 	SetLoglevel(int)
 	UUID() string
@@ -36,49 +36,49 @@ type Logger interface {
 
 // LogOutput - Log the given string with a timestamp and no prefix. Logging does
 // not depend on the current loglevel of an object
-func LogOutput(l Logger, m string) {
+func LogOutput(l Loggable, m string) {
 	log.Output(1, m)
 }
 
 // LogError - Log an error.
-func LogError(l Logger, m string) {
+func LogError(l Loggable, m string) {
 	log.Output(1, sprintf("[%s] %s", errorPrefix, m))
 }
 
 // LogWarning - Log a warning
-func LogWarning(l Logger, m string) {
+func LogWarning(l Loggable, m string) {
 	log.Output(1, sprintf("[%s] %s", warnPrefix, m))
 }
 
 // LogDebug - Log a debug message if the loglevel of the given object is three
 // or greater
-func LogDebug(l Logger, m string) {
+func LogDebug(l Loggable, m string) {
 	if l.Loglevel() >= debugLevel {
 		log.Output(1, sprintf("[%s] %s", debugPrefix, m))
 	}
 }
 
 // LogInfo - Log an informational notification if the loglevel is one or greater
-func LogInfo(l Logger, m string) {
+func LogInfo(l Loggable, m string) {
 	if l.Loglevel() >= infoLevel {
 		log.Output(1, sprintf("[%s] %s", infoPrefix, m))
 	}
 }
 
 // LogInit - Log an initialization message
-func LogInit(l Logger, m string) {
+func LogInit(l Loggable, m string) {
 	log.Output(1, sprintf("[%s] %s", initPrefix, m))
 }
 
 // LogVerbose - Log a message only when the loglevel of an object is 2 or greater
-func LogVerbose(l Logger, m string) {
+func LogVerbose(l Loggable, m string) {
 	if l.Loglevel() >= verboseLevel {
 		log.Output(1, sprintf("[%s] %s", verbosePrefix, m))
 	}
 }
 
 // LogChat - Log server chat
-func logChat(l Logger, m string) {
+func logChat(l Loggable, m string) {
 	if l.Loglevel() >= infoLevel {
 		log.Output(1, sprintf("[%s] %s", chatPrefix, m))
 	}
@@ -86,7 +86,7 @@ func logChat(l Logger, m string) {
 
 // LogHTTP - Log an HTTP response code and string. Provides formatting for the
 // response, and will output if the loglevel of the object is 1 or greater
-func LogHTTP(l Logger, rc int, r *http.Request) {
+func LogHTTP(l Loggable, rc int, r *http.Request) {
 	if l.Loglevel() >= infoLevel {
 		rcs := formatResponseHeader(rc, r.Method)
 		rinfo := sprintf("%s - %s %s",
