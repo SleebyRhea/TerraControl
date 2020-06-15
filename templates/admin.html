@@ -86,8 +86,8 @@
 					<input class="c-field" value="{{$p.Name}}" readonly>
 					<span class="c-input-group">
 						<button class="c-input-group c-button c-button--brand"><b>{{$p.IP.String}}</b></button>
-						<button class="c-input-group c-button c-button--warning" type="button" value="{{$p.Name}}" onclick="kickPlayer(this.value)"><b>Kick</b></button>
-						<button class="c-input-group c-button c-button--error" type="button" value="{{$p.Name}}" onclick="banPlayer(this.value)"><b>Ban</b></button>
+						<button class="c-input-group c-button c-button--warning" type="button" value="{{$p.Name}}" onclick="playerKick.call(this.value)"><b>Kick</b></button>
+						<button class="c-input-group c-button c-button--error" type="button" value="{{$p.Name}}" onclick="playerBan.call(this.value)"><b>Ban</b></button>
 					</span>
 				</div>
 				{{- end}}
