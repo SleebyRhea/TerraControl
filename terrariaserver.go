@@ -236,6 +236,49 @@ func (s *TerrariaServer) Version() string {
 	return s.version
 }
 
+/**********/
+/* Seeded */
+/**********/
+
+// Seed - Return the current game seed
+func (s *TerrariaServer) Seed() string {
+	return s.seed
+}
+
+// SetSeed - Sets the seed stored in the *TerrariaServer, *does not* change
+// the games seed
+func (s *TerrariaServer) SetSeed(seed string) {
+	s.seed = seed
+}
+
+/********************/
+/* PasswordLockable */
+/********************/
+
+// Password - Return the current password
+func (s *TerrariaServer) Password() string {
+	return s.password
+}
+
+// SetPassword - Set the server password
+func (s *TerrariaServer) SetPassword(p string) {
+	s.password = p
+}
+
+/*****************/
+/* LoginMessager */
+/*****************/
+
+// MOTD - Return the current MOTD
+func (s *TerrariaServer) MOTD() string {
+	return s.motd
+}
+
+// SetMOTD - Set the server MOTD
+func (s *TerrariaServer) SetMOTD(m string) {
+	s.motd = m
+}
+
 /********/
 /* Main */
 /********/
@@ -339,11 +382,11 @@ func superviseTerrariaOut(s *TerrariaServer, ready chan struct{}) {
 			e := GetEventFromString(out)
 			switch e.name {
 			case "EventConnection":
-				e.Handler(s, out, cch)
+				e.Handler(s, e, out, cch)
 			case "EventPlayerInfo":
-				e.Handler(s, out, pch)
+				e.Handler(s, e, out, pch)
 			default:
-				e.Handler(s, out, nil)
+				e.Handler(s, e, out, nil)
 			}
 
 		// Output as INIT until the server is ready

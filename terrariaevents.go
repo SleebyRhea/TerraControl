@@ -46,68 +46,77 @@ func init() {
 		defaultEventHandler)
 }
 
-func handleEventConnection(gs GameServer, in string, oc chan string) {
-	ge := gameEventsMap["EventConnection"]
-	m := ge.Capture.FindStringSubmatch(in)
+func handleEventConnection(gs GameServer, e *GameEvent, in string,
+	oc chan string) {
+	m := e.Capture.FindStringSubmatch(in)
 	go func() {
 		oc <- m[1]
 		LogDebug(gs, sprintf("Passed new connection information: %s", m[1]))
 	}()
 }
 
-func handleEventPlayerJoin(gs GameServer, in string, oc chan string) {
+func handleEventPlayerJoin(gs GameServer, e *GameEvent, in string,
+	oc chan string) {
 	SendCommand("playing", gs)
 }
 
-func handleEventPlayerLeft(gs GameServer, in string, oc chan string) {
+func handleEventPlayerLeft(gs GameServer, e *GameEvent, in string,
+	oc chan string) {
 	name := strings.TrimSuffix(in, " has left.")
 	gs.RemovePlayer(name)
 }
 
-func handleEventPlayerInfo(gs GameServer, in string, oc chan string) {
+func handleEventPlayerInfo(gs GameServer, e *GameEvent, in string,
+	oc chan string) {
 	go func() { oc <- in }()
-	m := gameEventsMap["EventPlayerInfo"].Capture.FindStringSubmatch(in)
+	m := e.Capture.FindStringSubmatch(in)
 	plr := gs.NewPlayer(m[1], m[2])
 	if IsNameIllegal(plr.Name()) {
 		plr.Kick("Name is not allowed")
 	}
 }
 
-func handleEventPlayerChat(gs GameServer, in string, oc chan string) {
+func handleEventPlayerChat(gs GameServer, e *GameEvent, in string,
+	oc chan string) {
 	logChat(gs, in)
 }
 
-func handleEventPlayerBoot(gs GameServer, in string, oc chan string) {
-	m := gameEventsMap["EventPlayerBoot"].Capture.FindStringSubmatch(in)
+func handleEventPlayerBoot(gs GameServer, e *GameEvent, in string,
+	oc chan string) {
+	m := e.Capture.FindStringSubmatch(in)
 	LogInfo(gs, sprintf("Failed connection: %s [%s]", m[1], m[2]))
 }
 
-func handleEventPlayerBan(gs GameServer, in string, oc chan string) {
+func handleEventPlayerBan(gs GameServer, e *GameEvent, in string,
+	oc chan string) {
+	LogInfo(gs, in)
+}
+
+func handleEventServerTime(gs GameServer, e *GameEvent, in string,
+	oc chan string) {
 	LogOutput(gs, in)
-	// m := gameEvents[e].FindStringSubmatch(out)
-	// LogInfo(s, sprintf("Banned IP: %s [%s]", m[1], m[2]))
 }
 
-func handleEventServerTime(gs GameServer, in string, oc chan string) {
-	LogOutput(gs, in)
+func handleEventServerSeed(gs GameServer, e *GameEvent, in string,
+	oc chan string) {
+	m := e.Capture.FindStringSubmatch(in)
+	gs.SetSeed(m[1])
 }
 
-func handleEventServerSeed(gs GameServer, in string, oc chan string) {
-	// m := gameEventsMap["EventServerSeed"].Capture.FindStringSubmatch(in)
-	// gs.Seed = m[1]
+func handleEventServerMOTD(gs GameServer, e *GameEvent, in string,
+	oc chan string) {
+	m := e.Capture.FindStringSubmatch(in)
+	gs.SetMOTD(m[1])
 }
 
-func handleEventServerMOTD(gs GameServer, in string, oc chan string) {
-	// m := gameEventsMap["EventServerMOTD"].Capture.FindStringSubmatch(in)
-	// s.MOTD = m[1]
+func handleEventServerPass(gs GameServer, e *GameEvent, in string,
+	oc chan string) {
+	m := e.Capture.FindStringSubmatch(in)
+	gs.SetPassword(m[1])
 }
 
-func handleEventServerPass(gs GameServer, in string, oc chan string) {
-	//
-	// s.Password = m[1]
-}
-
-func handleEventServerVers(gs GameServer, in string, oc chan string) {
-	m := gameEventsMap["EventServerVers"].Capture.FindStringSubmatch(in)
+func handleEventServerVers(gs GameServer, e *GameEvent, in string,
+	oc chan string) {
+	m := e.Capture.FindStringSubmatch(in)
 	gs.SetVersion(m[1])
 }

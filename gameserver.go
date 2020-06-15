@@ -15,6 +15,9 @@ type GameServer interface {
 	Loggable
 	Playable
 	Server
+	LoginMessager
+	PasswordLockable
+	Seeded
 }
 
 // Playable - Define an object that can track the players that have joined
@@ -27,8 +30,8 @@ type Playable interface {
 // Player - Define a player than can join a server and has various details
 // regarding its connection tracked
 type Player interface {
-	Name() string
 	SetIP(string)
+	Name() string
 	Kick(string)
 	Ban(string)
 	IP() net.IP
@@ -46,6 +49,24 @@ type Server interface {
 type Versioned interface {
 	SetVersion(string)
 	Version() string
+}
+
+// PasswordLockable -
+type PasswordLockable interface {
+	Password() string
+	SetPassword(string)
+}
+
+// LoginMessager -
+type LoginMessager interface {
+	MOTD() string
+	SetMOTD(string)
+}
+
+// Seeded -
+type Seeded interface {
+	Seed() string
+	SetSeed(string)
 }
 
 // Commandable - A Commandable object must implement the function EnqueueCommand

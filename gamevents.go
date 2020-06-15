@@ -12,7 +12,7 @@ func init() {
 
 // gameEventHandler - A function that takes a GameServer, some output and output
 // channel (used as needed) and processes a given gameevent
-type gameEventHandler func(GameServer, string, chan string)
+type gameEventHandler func(GameServer, *GameEvent, string, chan string)
 
 // GameEvent -
 // TODO: Have GameEvent implement Loggable
@@ -65,6 +65,6 @@ func EventType(s string, gs GameServer) int {
 	return -1
 }
 
-func defaultEventHandler(gs GameServer, in string, oc chan string) {
+func defaultEventHandler(gs GameServer, e *GameEvent, in string, oc chan string) {
 	LogOutput(gs, in)
 }

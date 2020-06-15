@@ -40,10 +40,10 @@ func main() {
 			Worldname:   "test",
 			Players:     ts.Players(),
 			PlayerCount: len(ts.Players()),
-			Password:    ts.password,
-			Seed:        ts.seed,
+			Password:    ts.Password(),
+			Seed:        ts.Seed(),
 			Version:     ts.Version(),
-			MOTD:        ts.motd,
+			MOTD:        ts.MOTD(),
 		}
 
 		if err := t.Execute(w, data); err != nil {
