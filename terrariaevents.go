@@ -49,15 +49,13 @@ func init() {
 func handleEventConnection(gs GameServer, e *GameEvent, in string,
 	oc chan string) {
 	m := e.Capture.FindStringSubmatch(in)
-	go func() {
-		oc <- m[1]
-		LogDebug(gs, sprintf("Passed new connection information: %s", m[1]))
-	}()
+	go func() { oc <- m[1] }()
 }
 
 func handleEventPlayerJoin(gs GameServer, e *GameEvent, in string,
 	oc chan string) {
 	SendCommand("playing", gs)
+	LogInfo(gs, in)
 }
 
 func handleEventPlayerLeft(gs GameServer, e *GameEvent, in string,
