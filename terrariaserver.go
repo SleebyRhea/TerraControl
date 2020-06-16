@@ -13,9 +13,6 @@ import (
 
 // TerrariaPlayer - Defines a player that has connected to the server at some point
 type TerrariaPlayer struct {
-	// Make sure we implement Player
-	Player
-
 	ip     net.IP
 	name   string
 	server *TerrariaServer
@@ -53,6 +50,7 @@ type TerrariaServer struct {
 	Cmd    *exec.Cmd
 	Stdin  io.Writer
 	Stdout io.Reader
+	Hub    *Hub
 
 	// Loggable
 	loglevel int
