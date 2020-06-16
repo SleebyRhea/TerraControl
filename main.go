@@ -14,6 +14,7 @@ import (
 )
 
 func main() {
+	// Very temporary
 	ts := NewTerrariaServer("/home/andrew/1405/Linux/TerrariaServer.exe")
 
 	if err := ts.Start(); err != nil {
