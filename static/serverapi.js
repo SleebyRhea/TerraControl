@@ -25,6 +25,7 @@ var serverStop     = DOMLoaded
 var serverMOTD     = DOMLoaded
 var serverTime     = DOMLoaded
 var serverStart    = DOMLoaded
+var serverStatus    = DOMLoaded
 var serverSettle   = DOMLoaded
 var serverPassword = DOMLoaded
 var serverRestart  = DOMLoaded
@@ -120,53 +121,40 @@ class TerraControlAPI {
 		}
 		var xhttp = new XMLHttpRequest();
 
-		if (this.onprecall) {
+		// Confirm that the request is even valid
+		if (this.onprecall() === true) {
+			xhttp.on
 			xhttp.onreadystatechange = function() {
 				if (xhttp.readyState == 4) {
 					var r = TerraControlAPI.Requester(this.responseURL)
 					r.oncomplete(this.status)
 					switch (true) {
-						case is2XX(this.status):
+						case (this.status <= 299 && this.status >= 200):
 							r.onsuccess(this.status);
 							break;
-						case is3XX(this.status):
+						case (this.status <= 399 && this.status >= 300):
 							r.onredirect(this.status);
 							break;
-						case is4XX(this.status):
+						case (this.status <= 499 && this.status >= 400):
 							r.onfailure(this.status);
 							break;
-						case is5XX(this.status):
+						case (this.status <= 599 && this.status >= 500):
 							r.onservererror(this.status);
 							break;
 						default:
 							console.log("TerraControl API: Invalid Response: "+this.status)
 					}
 				}
-			}
+			} 
+			
+			// Make the request
+			xhttp.open("GET", this.request, true)
+			xhttp.send()
 		}
-
-		xhttp.open("GET", this.request, true)
-		xhttp.send()
 	}
 }
 
 var scopes = new Map()
-
-function is2XX(r) {
-	return (r <= 299 && r >= 200)
-}
-
-function is3XX(r) {
-	return (r <= 399 && r >= 300)
-}
-
-function is4XX(r) {
-	return (r <= 499 && r >= 400)
-}
-
-function is5XX(r) {
-	return (r <= 599 && r >= 500)
-}
 
 // BEGIN
 document.addEventListener('DOMContentLoaded', () => {
@@ -181,7 +169,9 @@ document.addEventListener('DOMContentLoaded', () => {
 	serverMOTD     = new TerraControlAPI("server", "motd")
 	serverTime     = new TerraControlAPI("server", "time")
 	serverStart    = new TerraControlAPI("server", "start")
+	serverStatus   = new TerraControlAPI("server", "status")
 	serverSettle   = new TerraControlAPI("server", "settle")
+	serverRestart  = new TerraControlAPI("server", "restart")
 	serverPassword = new TerraControlAPI("server", "password")
 
 	// serverSay
@@ -232,6 +222,24 @@ document.addEventListener('DOMContentLoaded', () => {
 		resetElement(d); 
 	}
 	
+	serverRestart.onprecall = function() {
+		var d = document.getElementById("server-restart-button");
+		if (d.classList.contains("c-badge--error")) {
+			console.log("Server is currently restarting")
+			return false;
+		} else {
+			d.classList.add("c-badge--error");
+			return true;
+		}
+	}
+
+	serverRestart.oncomplete = function() {
+		var d = document.getElementById("server-restart-button");
+		if (d.classList.contains("c-badge--error")) {
+			d.classList.remove("c-badge--error");
+			return true;
+		}
+	}
 	
 	verifyMessage = function (elm, min, max) {
 		var i = getElementInsideContainer("send-server-div",
@@ -256,11 +264,6 @@ document.addEventListener('DOMContentLoaded', () => {
 				i.classList.remove("c-button--error")
 			}
 		}
-	}
-
-	serverRestart = function() {
-		serverStop.call()
-		serverStart.call()
 	}
 
 	DOMLoaded = function() {
