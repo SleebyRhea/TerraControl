@@ -29,6 +29,7 @@ type OutputSender interface {
 // Playable - Define an object that can track the players that have joined
 type Playable interface {
 	Player(string) Player
+	Players() []Player
 	NewPlayer(string, string) Player
 	RemovePlayer(string) bool
 }
@@ -51,30 +52,30 @@ type Server interface {
 	Restart() error
 }
 
-// Websocketer
+// Websocketer is an object that is able to output to the Guis websocket ub
 type Websocketer interface {
 	WSOutput() chan []byte
 }
 
-// Versioned -
+// Versioned is an interface to objects with verisons
 type Versioned interface {
 	SetVersion(string)
 	Version() string
 }
 
-// PasswordLockable -
+// PasswordLockable is an interface to an object that can have its password set
 type PasswordLockable interface {
 	Password() string
 	SetPassword(string)
 }
 
-// LoginMessager -
+// LoginMessager is an interface to an object that can have an MOTD set
 type LoginMessager interface {
 	MOTD() string
 	SetMOTD(string)
 }
 
-// Seeded -
+// Seeded is an interface to an object that has a seed
 type Seeded interface {
 	Seed() string
 	SetSeed(string)
