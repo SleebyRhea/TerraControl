@@ -76,16 +76,31 @@ type TerrariaServer struct {
 	seed     string
 	motd     string
 	time     string
+
+	// Close goroutines
+	close chan struct{}
+	path  string
 }
 
 // Start -
 func (s *TerrariaServer) Start() error {
 	var err error
 
+	world := "C:\\Users\\Andrew Wyatt\\Documents\\My Games\\Terraria\\Worlds\\World11.wld"
+	s.Cmd = exec.Command(s.path,
+		"-autocreate", "3",
+		"-world", world,
+		"-players", "8",
+		"-pass", "123123",
+		"-noupnp", "-secure",
+	)
+
+	LogDebug(s, "Getting Stdin Pipe")
 	if s.stdin, err = s.Cmd.StdinPipe(); err != nil {
 		return err
 	}
 
+	LogDebug(s, "Getting Stdout Pipe")
 	if s.stdout, err = s.Cmd.StdoutPipe(); err != nil {
 		return err
 	}
@@ -95,14 +110,20 @@ func (s *TerrariaServer) Start() error {
 	s.commandqueuemax = 500
 	s.motd = "<default>"
 
+	s.close = make(chan struct{})
 	ready := make(chan struct{})
 
+	LogInit(s, "Starting supervisor goroutines")
 	// Refactor these two goroutines to exit gracefully when the
 	// server is stopped to avoid stale goroutines
-	go superviseTerrariaOut(s, ready)
+	go superviseTerrariaOut(s, ready, s.close)
 	go func() {
 		for {
 			select {
+			case <-s.close:
+				LogInfo(s, "Closed command routine")
+				return
+
 			case cmd := <-s.commandqueue:
 				time.Sleep(time.Second / 2)
 				b := convertString(cmd)
@@ -113,12 +134,14 @@ func (s *TerrariaServer) Start() error {
 		}
 	}()
 
+	LogInit(s, "Starting TerrariaServer and waiting till ready")
 	if err = s.Cmd.Start(); err != nil {
 		return err
 	}
 
 	<-ready
 
+	LogInit(s, "TerrariaServer is online")
 	// Output commands that we'll use to populate the objects DB
 	SendCommand("seed", s)
 	SendCommand("version", s)
@@ -139,9 +162,11 @@ func (s *TerrariaServer) Stop() error {
 	select {
 	case <-time.After(30 * time.Second):
 		s.Cmd.Process.Kill()
+		close(s.close)
 		return errors.New("terraria took too long to exit, killed")
 	case err := <-done:
 		LogInfo(s, "Terraria server has been stopped")
+		close(s.close)
 		if err != nil {
 			return err
 		}
@@ -159,6 +184,7 @@ func (s *TerrariaServer) Restart() error {
 		return err
 	}
 
+	LogInfo(s, "Restarted Terraria")
 	return nil
 }
 
@@ -350,17 +376,10 @@ func (s *TerrariaServer) NewChatMessage(msg, name string) {
 
 // NewTerrariaServer -
 func NewTerrariaServer(out chan []byte, path string, args ...string) *TerrariaServer {
-	world := "C:\\Users\\Andrew Wyatt\\Documents\\My Games\\Terraria\\Worlds\\World11.wld"
 	t := &TerrariaServer{
 		uuid:   "TerrariaServer",
+		path:   path,
 		output: out,
-		Cmd: exec.Command(path,
-			"-autocreate", "3",
-			"-world", world,
-			"-players", "8",
-			"-pass", "123123",
-			"-noupnp", "-secure",
-		),
 	}
 
 	// t.Cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
@@ -378,13 +397,14 @@ func NewTerrariaServer(out chan []byte, path string, args ...string) *TerrariaSe
 // applies the applicable eventHandler for the output recieved. This routine is
 // also responsible for sending the stdout of Terraria to the output channel
 // to be processed by our websocket handler.
-func superviseTerrariaOut(s *TerrariaServer, ready chan struct{}) {
+func superviseTerrariaOut(s *TerrariaServer, ready chan struct{},
+	closech chan struct{}) {
 	LogDebug(s, "Started Terraria supervisor")
 	scanner := bufio.NewScanner(s.stdout)
 
 	cch := make(chan string, 0) // Initial Connection
 	pch := make(chan string, 0) // Player Login
-	go superviseTerrariaConnects(s, cch, pch)
+	go superviseTerrariaConnects(s, cch, pch, closech)
 
 	for scanner.Scan() {
 		// Strip the prefix that terraria outputs on a newline. Terraria sometimes
@@ -396,6 +416,11 @@ func superviseTerrariaOut(s *TerrariaServer, ready chan struct{}) {
 		}
 
 		select {
+		// Exit gracefully
+		case <-closech:
+			LogInfo(s, "Closed output supervision routine")
+			return
+
 		// Once we're ready, start processing logs.
 		case <-ready:
 			e := GetEventFromString(out)
@@ -412,7 +437,8 @@ func superviseTerrariaOut(s *TerrariaServer, ready chan struct{}) {
 		default:
 			switch out {
 			case "Server started":
-				LogInit(s, "Terraria server initialization completed", s.WSOutput())
+				LogInit(s, "Terraria server initialization completed",
+					s.WSOutput())
 				close(ready) //Close the channel to close this path
 
 			default:
@@ -426,7 +452,8 @@ func superviseTerrariaOut(s *TerrariaServer, ready chan struct{}) {
 // superviseTerrariaOut and provides warnings upon specific events (such as when
 // a single IP address connects too many times, or numerous connections are made
 // but not fulfilled)
-func superviseTerrariaConnects(s *TerrariaServer, cch chan string, pch chan string) {
+func superviseTerrariaConnects(s *TerrariaServer, cch chan string,
+	pch chan string, closech chan struct{}) {
 	newconnections := make(map[string]time.Time)
 	stale := make(map[string]int)
 	conRe := gameEventsMap["EventPlayerInfo"]
@@ -482,6 +509,10 @@ func superviseTerrariaConnects(s *TerrariaServer, cch chan string, pch chan stri
 				delete(stale, ip)
 				LogDebug(s, "Cleared stale connection count for IP: "+ip)
 			}
+
+		case <-closech:
+			LogInfo(s, "Closed connection supervisor")
+			return
 		}
 	}
 }
