@@ -340,11 +340,17 @@ func (s *TerrariaServer) NewChatMessage(msg, name string) {
 
 // NewTerrariaServer -
 func NewTerrariaServer(path string, args ...string) *TerrariaServer {
+	world := "C:\\Users\\Andrew Wyatt\\Documents\\My Games\\Terraria\\Worlds\\World11.wld"
 	t := &TerrariaServer{
-		uuid: "terraria",
+		uuid: "TerrariaServer",
 		Cmd: exec.Command(path,
-			"-autocreate", "3", "-world", "C:\\Users\\Andrew Wyatt\\Documents\\My Games\\Terraria\\Worlds\\World11.wld", "-secure",
-			"-players", "8", "-pass", "123123", "-noupnp")}
+			"-autocreate", "3",
+			"-world", world,
+			"-players", "8",
+			"-pass", "123123",
+			"-noupnp", "-secure",
+		),
+	}
 
 	t.Cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	t.SetLoglevel(3)
@@ -412,7 +418,7 @@ func superviseTerrariaConnects(s *TerrariaServer, cch chan string, pch chan stri
 			for ip, t := range newconnections {
 				now := time.Now()
 				if now.Sub(t) > 30*time.Second {
-					LogWarning(s, "Stale connection found for IP: "+ip)
+					LogWarning(s, "Stale connection detected for IP: "+ip)
 					delete(newconnections, ip)
 					if num, ok := stale[ip]; ok {
 						stale[ip] = num + 1
