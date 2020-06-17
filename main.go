@@ -107,13 +107,51 @@ func main() {
 	})
 
 	http.HandleFunc("/api/server/start/", func(w http.ResponseWriter, r *http.Request) {
-		LogHTTP(ts, 404, r)
-		w.WriteHeader(404)
+		if ts.IsUp() {
+			LogHTTP(ts, 403, r)
+			w.WriteHeader(403)
+			return
+		}
+
+		if err := ts.Start(); err != nil {
+			log.Fatal(err)
+		}
+
+		LogHTTP(ts, 200, r)
+		w.WriteHeader(200)
 	})
 
 	http.HandleFunc("/api/server/stop/", func(w http.ResponseWriter, r *http.Request) {
-		LogHTTP(ts, 404, r)
-		w.WriteHeader(404)
+		if ts.IsUp() {
+			LogHTTP(ts, 200, r)
+			go func() { ts.Stop() }()
+			w.WriteHeader(200)
+			return
+		}
+
+		LogHTTP(ts, 400, r)
+		w.WriteHeader(400)
+	})
+
+	http.HandleFunc("/api/server/status/", func(w http.ResponseWriter, r *http.Request) {
+		if ts.IsUp() {
+			LogHTTP(ts, 200, r)
+			w.WriteHeader(200)
+		}
+
+		LogHTTP(ts, 400, r)
+		w.WriteHeader(400)
+	})
+
+	http.HandleFunc("/api/server/restart/", func(w http.ResponseWriter, r *http.Request) {
+		if err := ts.Restart(); err != nil {
+			LogHTTP(ts, 500, r)
+			w.WriteHeader(500)
+			log.Fatal(err)
+		}
+
+		LogHTTP(ts, 200, r)
+		w.WriteHeader(200)
 	})
 
 	http.HandleFunc("/api/server/say/", func(w http.ResponseWriter, r *http.Request) {
@@ -201,8 +239,10 @@ func main() {
 		case os.Interrupt, syscall.SIGTERM:
 			fmt.Print("\r")
 			log.Output(1, "Quitting")
-			if err := ts.Stop(); err != nil {
-				log.Fatal(err)
+			if ts.IsUp() {
+				if err := ts.Stop(); err != nil {
+					log.Fatal(err)
+				}
 			}
 			os.Exit(0)
 		default:
