@@ -77,9 +77,9 @@
 					<div class="c-card__item c-card__item--brand">
 						Manage Server
 						<button class="u-right c-badge c-badge hideme">hidden</button>
-						<button class="u-right c-badge c-badge--forceright c-badge--right" onclick="serverRestart()">Restart</button>
-						<button class="u-right c-badge c-badge--forceright c-badge--center" onclick="serverStop.call()">Stop</button>
-						<button class="u-right c-badge c-badge--forceright c-badge--left" onclick="serverStart.call()">Start</button>
+						<button id="server-restart-button" class="u-right c-badge c-badge--forceright c-badge--right" onclick="serverRestart.call()">Restart</button>
+						<button id="server-stop-button" class="u-right c-badge c-badge--forceright c-badge--center" onclick="serverStop.call()">Stop</button>
+						<button id="server-start-button" class="u-right c-badge c-badge--forceright c-badge--left" onclick="serverStart.call()">Start</button>
 					</div>
 
 					<div class="c-input-group c-card__item" id="send-server-div" >
