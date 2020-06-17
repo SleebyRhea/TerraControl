@@ -5,93 +5,135 @@
 		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css">
 		<link rel="stylesheet" href="https://unpkg.com/@blaze/css@9.2.0/dist/blaze/blaze.css">
 		<script src="static/serverapi.js"></script>
-		<meta http-equiv="refresh" content="30">
+		<script src="static/websocket.js"></script>
+		{{/* <meta http-equiv="refresh" content="30"> */}}
 		<style>
+			html * { font-family: Arial; }
 			.c-badge--forceright { float: right; }
 			.c-badge--left { margin-right: 6px; }
 			.c-badge--center { margin-right: 5px; }
 			.hideme { visibility: hidden; }
+			nav {max-height:100%; height: 600px; min-height: 200px}
+			nav {overflow:hidden; overflow-y:scroll;}
+			#serverlog-window span {
+				    display: inline-block;
+					vertical-align: bottom;
+					margin-bottom: 2px;
+					margin-left: 1%;
+			}
 		</style>
 	</head> 
 	<body>
-		<div class="c-card u-highest">
-			<div class="c-card__item c-card__item--brand">Server Information
-				<button class="u-right c-badge c-badge--success c-badget hideme">hidden</button>
-				<button class="u-right c-badge c-badge--forceright disabled c-badge--right">Terraria v{{.Version}}</button>
-			</div>
-			<div class="c-input-group c-card__item">
-				Password: {{.Password}}
-			</div>
-			<div class="c-input-group c-card__item">
-				World Seed: {{.Seed}}
-			</div>
-			<div class="c-input-group c-card__item">
-				Message of the Day: {{.MOTD}}
-			</div>
-		</div>
-		<div class="c-card u-highest">
-			<div class="c-card__item c-card__item--brand">
-				Manage Server
-				<button class="u-right c-badge c-badge c-badget hideme">hidden</button>
-				<button class="u-right c-badge c-badge c-badge--forceright c-badge--right" onclick="serverRestart()">Restart</button>
-				<button class="u-right c-badge c-badge c-badge--forceright c-badge--center" onclick="serverStop.call()">Stop</button>
-				<button class="u-right c-badge c-badge c-badge--forceright c-badge--left" onclick="serverStart.call()">Start</button>
+		<br>
+		<div class="o-grid">
+			{{/* Lefthand side of grid */}}
+			<div class="o-grid__cell o-grid__cell--width-60">
+				<div class="c-card u-highest">
+					<div class="c-card__item c-card__item--brand">Server Logs
+						<button class="u-right c-badge c-badge c-badget hideme">hidden</button>
+						{{/* <button class="u-right c-badge c-badge c-badge--forceright c-badge--right" onclick="toggleHidden(this, 'serverlog-chat');">Chat</button>
+						<button class="u-right c-badge c-badge c-badge--forceright c-badge--left" onclick="toggleHidden(this, 'serverlog-warn');">Info</button>
+						<button class="u-right c-badge c-badge c-badge--forceright c-badge--left" onclick="toggleHidden(this, 'serverlog-error');">Warnings</button>
+						<button class="u-right c-badge c-badge c-badge--forceright c-badge--left" onclick="toggleHidden(this, 'serverlog-info');">Errors</button> */}}
+					</div>
+					<nav id="serverlog-window"></nav>
+					<div class="c-input-group c-card__item" id="send-server-div" >
+						<div id="send-server-message" class="o-field">
+							<input type="text" id="send-server-message-input" class="c-field" placeholder="Send Message..." oninput="verifyMessage(this, 1, 64);">
+						</div>
+						<button id="send-server-message-button" class="c-button c-button--brand" onclick="serverSay.call();">
+							Submit
+						</button>
+					</div>
+				</div>
 			</div>
 
-			<div class="c-input-group c-card__item" id="send-server-div" >
-				<div id="send-server-motd" class="o-field">
-					<input type="text" id="send-server-motd-input" class="c-field" placeholder="Set Message of the Day...">
+			{{/* Righthand Side of grid*/}}
+			<div class="o-grid__cell">
+				{{/* BEGIN Server Information */}}
+				<div class="c-card u-highest">
+					<div class="c-card__item c-card__item--brand">Server Information
+						<button class="u-right c-badge c-badge--success c-badget hideme">hidden</button>
+						{{if .Version}}
+							<button class="u-right c-badge c-badge--forceright disabled c-badge--right">Terraria v{{.Version}}</button>
+						{{end}}
+					</div>
+					<div class="c-input-group c-card__item">
+						Password: {{.Password}}
+					</div>
+					<div class="c-input-group c-card__item">
+						World Seed: {{.Seed}}
+					</div>
+					<div class="c-input-group c-card__item">
+						Message of the Day: {{.MOTD}}
+					</div>
 				</div>
-				<button id="send-server-motd-button" class="c-button c-button--brand" onclick="serverMOTD.call();">
-					Submit
-				</button>
-			</div>
+				{{/* END Server Information */}}
 
-			<div class="c-input-group c-card__item" id="send-server-div" >
-				<div id="send-server-password" class="o-field">
-					<input type="text" id="send-server-password-input" class="c-field" placeholder="Set Password...">
-				</div>
-				<button id="send-server-password-button" class="c-button c-button--brand" onclick="serverPassword.call();">
-					Submit
-				</button>
-			</div>
+				<br>
 
-			<div class="c-input-group c-card__item" id="send-server-div" >
-				<div id="send-server-message" class="o-field">
-					<input type="text" id="send-server-message-input" class="c-field" placeholder="Send Message..." oninput="verifyMessage(this, 1, 64);">
-				</div>
-				<button id="send-server-message-button" class="c-button c-button--brand" onclick="serverSay.call();">
-					Submit
-				</button>
-			</div>
+				{{/* BEGIN Manage Server */}}
+				<div class="c-card u-highest">
+					<div class="c-card__item c-card__item--brand">
+						Manage Server
+						<button class="u-right c-badge c-badge hideme">hidden</button>
+						<button class="u-right c-badge c-badge--forceright c-badge--right" onclick="serverRestart()">Restart</button>
+						<button class="u-right c-badge c-badge--forceright c-badge--center" onclick="serverStop.call()">Stop</button>
+						<button class="u-right c-badge c-badge--forceright c-badge--left" onclick="serverStart.call()">Start</button>
+					</div>
 
-			<footer class="c-cart__footer c-card__footer--block">
-				<div class="c-input-group">
-					<button onclick="serverTime.call('dawn');" class="c-button c-button--block c-button--ghost c-button--brand"><b>Dawn</b></button>
-					<button onclick="serverTime.call('noon');" class="c-button c-button--block c-button--ghost c-button--brand"><b>Noon</b></button>
-					<button onclick="serverTime.call('dusk');" class="c-button c-button--block c-button--ghost c-button--brand"><b>Dusk</b></button>
-					<button onclick="serverTime.call('midnight');" class="c-button c-button--block c-button--ghost c-button--brand"><b>Midnight</b></button>
-					<button onclick="serverSettle.call();" class="c-button c-button--block c-button--ghost c-button--brand"><b>Settle Liquids</b></button>
-				</div>
-			</footer>
-		</div>
+					<div class="c-input-group c-card__item" id="send-server-div" >
+						<div id="send-server-motd" class="o-field">
+							<input type="text" id="send-server-motd-input" class="c-field" placeholder="Set Message of the Day...">
+						</div>
+						<button id="send-server-motd-button" class="c-button c-button--brand" onclick="serverMOTD.call();">
+							Submit
+						</button>
+					</div>
 
-		<div class="c-card u-highest">
-			<div class="c-card__item c-card__item--brand">
-				Players: {{.PlayerCount}}
-			</div>
-			{{- if gt .PlayerCount 0 }}
-				{{- range $i, $p := .Players}}
-				<div class="c-card__item c-input-group">
-					<input class="c-field" value="{{$p.Name}}" readonly>
-					<span class="c-input-group">
-						<button class="c-input-group c-button c-button--brand"><b>{{$p.IP.String}}</b></button>
-						<button class="c-input-group c-button c-button--warning" type="button" value="{{$p.Name}}" onclick="playerKick.call(this.value)"><b>Kick</b></button>
-						<button class="c-input-group c-button c-button--error" type="button" value="{{$p.Name}}" onclick="playerBan.call(this.value)"><b>Ban</b></button>
-					</span>
+					<div class="c-input-group c-card__item" id="send-server-div" >
+						<div id="send-server-password" class="o-field">
+							<input type="text" id="send-server-password-input" class="c-field" placeholder="Set Password...">
+						</div>
+						<button id="send-server-password-button" class="c-button c-button--brand" onclick="serverPassword.call();">
+							Submit
+						</button>
+					</div>
+
+					<footer class="c-cart__footer c-card__footer--block">
+						<div class="c-input-group">
+							<button onclick="serverTime.call('dawn');" class="c-button c-button--block c-button--ghost c-button--brand"><b>Dawn</b></button>
+							<button onclick="serverTime.call('noon');" class="c-button c-button--block c-button--ghost c-button--brand"><b>Noon</b></button>
+							<button onclick="serverTime.call('dusk');" class="c-button c-button--block c-button--ghost c-button--brand"><b>Dusk</b></button>
+							<button onclick="serverTime.call('midnight');" class="c-button c-button--block c-button--ghost c-button--brand"><b>Night</b></button>
+							<button onclick="serverSettle.call();" class="c-button c-button--block c-button--ghost c-button--brand"><b>Settle</b></button>
+						</div>
+					</footer>
 				</div>
-				{{- end}}
-			{{- end}}
+				{{/* END Manage Server */}}
+
+				<br>
+
+				{{/* BEGIN Players */}}
+				<div class="c-card u-highest">
+					<div class="c-card__item c-card__item--brand">
+						Players: {{.PlayerCount}}
+					</div>
+					{{- if gt .PlayerCount 0 }}
+						{{- range $i, $p := .Players}}
+						<div class="c-card__item c-input-group">
+							<input class="c-field" value="{{$p.Name}}" readonly>
+							<span class="c-input-group">
+								<button class="c-input-group c-button c-button--brand"><b>{{$p.IP.String}}</b></button>
+								<button class="c-input-group c-button c-button--warning" type="button" value="{{$p.Name}}" onclick="playerKick.call(this.value)"><b>Kick</b></button>
+								<button class="c-input-group c-button c-button--error" type="button" value="{{$p.Name}}" onclick="playerBan.call(this.value)"><b>Ban</b></button>
+							</span>
+						</div>
+						{{- end}}
+					{{- end}}
+				</div>
+				{{/* END Players */}}
+			</div>
 		</div>
 	</body>
 </html>

@@ -13,17 +13,18 @@ import (
 	"syscall"
 )
 
+// Very temporary
 func main() {
-	// Very temporary
-	ts := NewTerrariaServer("/home/andrew/1405/Linux/TerrariaServer.exe")
+	out := make(chan []byte)
+	hub := NewConnHub(out)
 
-	if err := ts.Start(); err != nil {
-		log.Output(1, err.Error())
-		os.Exit(1)
-	}
-
+	// ts := NewTerrariaServer(out, "/home/andrew/1405/Linux/TerrariaServer.exe")
+	ts := NewTerrariaServer(out, "D:\\Games\\GOG\\Windows\\Terraria\\TerrariaServer.exe")
 	// https://stackoverflow.com/questions/43601359/how-do-i-serve-css-and-js-in-go
 	// Am thief. Credit to @RayfenWindspear :D
+
+	go hub.Start()
+
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
 	http.HandleFunc("/admin", func(w http.ResponseWriter, r *http.Request) {
@@ -171,14 +172,27 @@ func main() {
 	})
 
 	http.HandleFunc("/api/server/settle/", func(w http.ResponseWriter, r *http.Request) {
-		LogInfo(ts, "Settling liquids")
+		LogInfo(ts, "Settling liquids", out)
 		SendCommand("settle", ts)
 		w.WriteHeader(200)
 		LogHTTP(ts, 200, r)
 	})
 
-	go func() { log.Fatal(http.ListenAndServe(":8080", nil)) }()
+	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+		serveWs(hub, w, r)
+	})
 
+	go func() {
+		log.Output(1, "Starting webserver")
+		log.Fatal(http.ListenAndServe(":8080", nil))
+	}()
+
+	if err := ts.Start(); err != nil {
+		log.Output(1, err.Error())
+		os.Exit(1)
+	}
+
+	log.Output(1, "Completed INIT. Waiting for termination signal")
 	sc := make(chan os.Signal, 1)
 	signal.Notify(sc)
 
@@ -199,10 +213,10 @@ func main() {
 
 func convertString(str string) bytes.Buffer {
 	b := *bytes.NewBuffer(make([]byte, 0))
-	// nul := []byte{0x0000}
+	nul := []byte{0x0000}
 	for _, c := range str {
 		b.WriteRune(c)
-		// b.Write(nul)
+		b.Write(nul)
 	}
 	log.Output(1, sprintf("[DEBUG] Converted string %q to [% x] ", str, b.Bytes()))
 	return b

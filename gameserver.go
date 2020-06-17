@@ -18,6 +18,12 @@ type GameServer interface {
 	LoginMessager
 	PasswordLockable
 	Seeded
+	Websocketer
+}
+
+// OutputSender sends output from a GameServer to a channel
+type OutputSender interface {
+	SetSendChannel(chan []byte)
 }
 
 // Playable - Define an object that can track the players that have joined
@@ -43,6 +49,11 @@ type Server interface {
 	Stop() error
 	Start() error
 	Restart() error
+}
+
+// Websocketer
+type Websocketer interface {
+	WSOutput() chan []byte
 }
 
 // Versioned -

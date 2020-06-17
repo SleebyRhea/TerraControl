@@ -55,7 +55,7 @@ func handleEventConnection(gs GameServer, e *GameEvent, in string,
 func handleEventPlayerJoin(gs GameServer, e *GameEvent, in string,
 	oc chan string) {
 	SendCommand("playing", gs)
-	LogInfo(gs, in)
+	LogInfo(gs, in, gs.WSOutput())
 }
 
 func handleEventPlayerLeft(gs GameServer, e *GameEvent, in string,
@@ -76,18 +76,18 @@ func handleEventPlayerInfo(gs GameServer, e *GameEvent, in string,
 
 func handleEventPlayerChat(gs GameServer, e *GameEvent, in string,
 	oc chan string) {
-	logChat(gs, in)
+	LogChat(gs, in, gs.WSOutput())
 }
 
 func handleEventPlayerBoot(gs GameServer, e *GameEvent, in string,
 	oc chan string) {
 	m := e.Capture.FindStringSubmatch(in)
-	LogInfo(gs, sprintf("Failed connection: %s [%s]", m[1], m[2]))
+	LogInfo(gs, sprintf("Failed connection: %s [%s]", m[1], m[2]), gs.WSOutput())
 }
 
 func handleEventPlayerBan(gs GameServer, e *GameEvent, in string,
 	oc chan string) {
-	LogInfo(gs, in)
+	LogInfo(gs, in, gs.WSOutput())
 }
 
 func handleEventServerTime(gs GameServer, e *GameEvent, in string,

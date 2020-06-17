@@ -7,7 +7,6 @@ import (
 	"net"
 	"os/exec"
 	"strings"
-	"syscall"
 	"time"
 )
 
@@ -47,10 +46,12 @@ func (p TerrariaPlayer) Ban(r string) {
 
 // TerrariaServer - Terraria server definition
 type TerrariaServer struct {
-	Cmd    *exec.Cmd
-	Stdin  io.Writer
-	Stdout io.Reader
-	Hub    *Hub
+	Cmd *exec.Cmd
+
+	// IO
+	stdin  io.Writer
+	stdout io.Reader
+	output chan []byte
 
 	// Loggable
 	loglevel int
@@ -81,11 +82,11 @@ type TerrariaServer struct {
 func (s *TerrariaServer) Start() error {
 	var err error
 
-	if s.Stdin, err = s.Cmd.StdinPipe(); err != nil {
+	if s.stdin, err = s.Cmd.StdinPipe(); err != nil {
 		return err
 	}
 
-	if s.Stdout, err = s.Cmd.StdoutPipe(); err != nil {
+	if s.stdout, err = s.Cmd.StdoutPipe(); err != nil {
 		return err
 	}
 
@@ -105,7 +106,7 @@ func (s *TerrariaServer) Start() error {
 			case cmd := <-s.commandqueue:
 				time.Sleep(time.Second / 2)
 				b := convertString(cmd)
-				b.WriteTo(s.Stdin)
+				b.WriteTo(s.stdin)
 				LogDebug(s, "Ran: "+cmd)
 				s.commandcount = s.commandcount - 1
 			}
@@ -277,6 +278,15 @@ func (s *TerrariaServer) SetMOTD(m string) {
 	s.motd = m
 }
 
+/***************/
+/* Websocketer */
+/***************/
+
+// WSOutput returns the chan that is used to output to a websocket
+func (s *TerrariaServer) WSOutput() chan []byte {
+	return s.output
+}
+
 /********/
 /* Main */
 /********/
@@ -339,10 +349,11 @@ func (s *TerrariaServer) NewChatMessage(msg, name string) {
 }
 
 // NewTerrariaServer -
-func NewTerrariaServer(path string, args ...string) *TerrariaServer {
+func NewTerrariaServer(out chan []byte, path string, args ...string) *TerrariaServer {
 	world := "C:\\Users\\Andrew Wyatt\\Documents\\My Games\\Terraria\\Worlds\\World11.wld"
 	t := &TerrariaServer{
-		uuid: "TerrariaServer",
+		uuid:   "TerrariaServer",
+		output: out,
 		Cmd: exec.Command(path,
 			"-autocreate", "3",
 			"-world", world,
@@ -352,7 +363,7 @@ func NewTerrariaServer(path string, args ...string) *TerrariaServer {
 		),
 	}
 
-	t.Cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	// t.Cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	t.SetLoglevel(3)
 
 	gameServers = append(gameServers, t)
@@ -363,9 +374,13 @@ func NewTerrariaServer(path string, args ...string) *TerrariaServer {
 /* Goroutines */
 /**************/
 
+// superviseTerrariaOut watches the output provided by the Terraria process and
+// applies the applicable eventHandler for the output recieved. This routine is
+// also responsible for sending the stdout of Terraria to the output channel
+// to be processed by our websocket handler.
 func superviseTerrariaOut(s *TerrariaServer, ready chan struct{}) {
 	LogDebug(s, "Started Terraria supervisor")
-	scanner := bufio.NewScanner(s.Stdout)
+	scanner := bufio.NewScanner(s.stdout)
 
 	cch := make(chan string, 0) // Initial Connection
 	pch := make(chan string, 0) // Player Login
@@ -397,16 +412,20 @@ func superviseTerrariaOut(s *TerrariaServer, ready chan struct{}) {
 		default:
 			switch out {
 			case "Server started":
-				LogInit(s, "Terraria server INIT completed")
+				LogInit(s, "Terraria server initialization completed", s.WSOutput())
 				close(ready) //Close the channel to close this path
 
 			default:
-				LogInit(s, out)
+				LogInit(s, out, s.WSOutput())
 			}
 		}
 	}
 }
 
+// superviseTerrariaConnects processes the connection events channeled to it by
+// superviseTerrariaOut and provides warnings upon specific events (such as when
+// a single IP address connects too many times, or numerous connections are made
+// but not fulfilled)
 func superviseTerrariaConnects(s *TerrariaServer, cch chan string, pch chan string) {
 	newconnections := make(map[string]time.Time)
 	stale := make(map[string]int)
