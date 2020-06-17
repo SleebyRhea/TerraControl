@@ -108,7 +108,7 @@ func (s *TerrariaServer) Start() error {
 	s.commandqueue = make(chan string, 500)
 	s.commandcount = 0
 	s.commandqueuemax = 500
-	s.motd = "<default>"
+	s.motd = "default"
 
 	s.close = make(chan struct{})
 	ready := make(chan struct{})
@@ -188,19 +188,6 @@ func (s *TerrariaServer) Restart() error {
 	return nil
 }
 
-// Status -
-func (s *TerrariaServer) Status() (int, error) {
-	if s.Cmd.ProcessState != nil {
-		return 1, nil
-	}
-
-	if s.Cmd.Process != nil {
-		return 0, nil
-	}
-
-	return 2, errors.New("Process entered an unknown state")
-}
-
 // IsUp -
 func (s *TerrariaServer) IsUp() bool {
 	if s.Cmd.ProcessState != nil {
@@ -245,6 +232,12 @@ func (s *TerrariaServer) EnqueueCommand(c string) {
 	} else {
 		LogWarning(s, "Attempted to run more than the maximum amount of commands!")
 	}
+}
+
+// CommandCount returns the current number of queued commands as well as the
+// max commands that can be queued at once.
+func (s *TerrariaServer) CommandCount() (int, int) {
+	return s.commandcount, s.commandqueuemax
 }
 
 /*************/

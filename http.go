@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"html/template"
 	"log"
 	"net/http"
@@ -16,29 +17,28 @@ func serveHTTP(h *ConnHub, gs GameServer, out chan []byte) {
 	http.HandleFunc("/admin", func(w http.ResponseWriter, r *http.Request) {
 		LogOutput(gs, "Received connection to /admin")
 		t := template.Must(template.ParseFiles("templates/admin.html"))
-		data := struct {
-			Worldname   string
-			Players     []Player
-			PlayerCount int
-			Password    string
-			Seed        string
-			Version     string
-			MOTD        string
-		}{
-			Worldname:   "test",
-			Players:     gs.Players(),
-			PlayerCount: len(gs.Players()),
-			Password:    gs.Password(),
-			Seed:        gs.Seed(),
-			Version:     gs.Version(),
-			MOTD:        gs.MOTD(),
-		}
+		data := GameStatus(gs)
 
 		if err := t.Execute(w, data); err != nil {
 			log.Output(1, err.Error())
 			LogHTTP(gs, 500, r)
 		}
 
+		LogHTTP(gs, 200, r)
+	})
+
+	http.HandleFunc("/api/ajax/fullstatus/", func(w http.ResponseWriter, r *http.Request) {
+		LogInfo(gs, "Received fullstatus request: "+r.RequestURI)
+		json, err := json.Marshal(GameStatus(gs))
+		if err != nil {
+			LogError(gs, err.Error())
+			LogHTTP(gs, 500, r)
+			return
+		}
+
+		w.WriteHeader(200)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(json)
 		LogHTTP(gs, 200, r)
 	})
 

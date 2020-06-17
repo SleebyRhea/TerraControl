@@ -21,6 +21,19 @@ type GameServer interface {
 	Websocketer
 }
 
+// GameData is a datastructure that represents the current state of a GameServer
+type GameData struct {
+	WorldName   string
+	Online      bool
+	Seed        string
+	MOTD        string
+	Password    string
+	Players     []*PlayerData
+	PlayerCount int
+	Loglevel    int
+	Version     string
+}
+
 // OutputSender sends output from a GameServer to a channel
 type OutputSender interface {
 	SetSendChannel(chan []byte)
@@ -42,6 +55,14 @@ type Player interface {
 	Kick(string)
 	Ban(string)
 	IP() net.IP
+}
+
+// PlayerData represents a player, and includes the name and their IP address.
+// the IP address is in string form, as this is intended to be marshalled into a
+// json file.
+type PlayerData struct {
+	Name string
+	IP   string
 }
 
 // Server -
@@ -84,6 +105,7 @@ type Seeded interface {
 // Commandable - A Commandable object must implement the function EnqueueCommand
 type Commandable interface {
 	EnqueueCommand(string)
+	CommandCount() (int, int)
 }
 
 // SendCommand - Send a command to a Commandable() object
@@ -104,6 +126,33 @@ func IsNameIllegal(s string) bool {
 		}
 	}
 	return false
+}
+
+// GamePlayerData returns a playerdata object for a GameServer
+func GamePlayerData(gs GameServer) []*PlayerData {
+	d := make([]*PlayerData, 0)
+	for _, p := range gs.Players() {
+		d = append(d, &PlayerData{
+			Name: p.Name(),
+			IP:   p.IP().String(),
+		})
+	}
+	return d
+}
+
+// GameStatus constructs a new GameData struct from the given GameServer
+func GameStatus(gs GameServer) *GameData {
+	return &GameData{
+		WorldName:   "Terraria",
+		Online:      gs.IsUp(),
+		Seed:        gs.Seed(),
+		MOTD:        gs.MOTD(),
+		Password:    gs.Password(),
+		Players:     GamePlayerData(gs),
+		PlayerCount: len(gs.Players()),
+		Loglevel:    gs.Loglevel(),
+		Version:     gs.Version(),
+	}
 }
 
 func init() {
