@@ -55,16 +55,16 @@
 					<div class="c-card__item c-card__item--brand">Server Information
 						<button class="u-right c-badge c-badge--success c-badget hideme">hidden</button>
 						{{if .Version}}
-							<button class="u-right c-badge c-badge--forceright disabled c-badge--right">Terraria v{{.Version}}</button>
+							<button id="game-version-badge" class="u-right c-badge c-badge--forceright disabled c-badge--right">Terraria v{{.Version}}</button>
 						{{end}}
 					</div>
-					<div class="c-input-group c-card__item">
+					<div id="game-password" class="c-input-group c-card__item">
 						Password: {{.Password}}
 					</div>
-					<div class="c-input-group c-card__item">
+					<div id="world-seed" class="c-input-group c-card__item">
 						World Seed: {{.Seed}}
 					</div>
-					<div class="c-input-group c-card__item">
+					<div id="game-motd" class="c-input-group c-card__item">
 						Message of the Day: {{.MOTD}}
 					</div>
 				</div>
@@ -115,24 +115,22 @@
 				<br>
 
 				{{/* BEGIN Players */}}
-				<div class="c-card u-highest">
-					<div class="c-card__item c-card__item--brand">
+				<div class="c-card u-higher" id="player-list">
+					<div id="player-count" class="c-card__item c-card__item--brand">
 						Players: {{.PlayerCount}}
 					</div>
-					{{- if gt .PlayerCount 0 }}
-						{{- range $i, $p := .Players}}
-						<div class="c-card__item c-input-group">
-							<input class="c-field" value="{{$p.Name}}" readonly>
-							<span class="c-input-group">
-								<button class="c-input-group c-button c-button--brand"><b>{{$p.IP.String}}</b></button>
-								<button class="c-input-group c-button c-button--warning" type="button" value="{{$p.Name}}" onclick="playerKick.call(this.value)"><b>Kick</b></button>
-								<button class="c-input-group c-button c-button--error" type="button" value="{{$p.Name}}" onclick="playerBan.call(this.value)"><b>Ban</b></button>
-							</span>
-						</div>
-						{{- end}}
-					{{- end}}
+					{{if gt .PlayerCount 0}} {{range $i, $p := .Players}}
+					<div class="c-card__item c-input-group player-container">
+						<input class="c-field" value="{{$p.Name}}" readonly></input>
+						<span class="c-input-group">
+							<button class="c-input-group c-button c-button--brand" type="button">{{$p.IP}}</button>
+							<button class="c-input-group c-button c-button--warning" type="button" value="{{$p.Name}}" onclick="playerKick.call(this.value)">Kick</button>
+							<button class="c-input-group c-button c-button--error" type="button" value="{{$p.Name}}" onclick="playerBan.call(this.value)">Ban</button>
+						</span>
+					</div>
+					{{end}} {{end}}
 				</div>
-				{{/* END Players */}}
+				{{- /* END Players */}}
 			</div>
 		</div>
 	</body>

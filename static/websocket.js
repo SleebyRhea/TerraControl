@@ -17,9 +17,9 @@ function prepareChatItem(elm, text) {
 	var reChat = new RegExp("^<([^\\[\\]]+)> ")
 	var prefix = text.match(reType, "")
 	var msg = text.replace(reType, "")
-
-	prefix = prefix[0]
 	var btn = document.createElement("button")
+	
+	prefix = prefix[0]
 
 	// console.log(prefix)
 	switch (true) {
@@ -38,18 +38,21 @@ function prepareChatItem(elm, text) {
 			msg = msg.replace(reChat, "")
 			btn.innerText = chatter
 			break;
+
 		case (prefix == "[WARN] "):
 			elm.classList.add("serverlog-warn")
 			btn.classList.add("c-badge")
 			btn.classList.add("c-badge--warning")
 			btn.innerText = "Warning"
 			break;
+
 		case (prefix == "[ERROR] "):
 			elm.classList.add("serverlog-error")
 			btn.classList.add("c-badge")
 			btn.classList.add("c-badge--error")
 			btn.innerText = "Error"
 			break;
+
 		default:
 			elm.classList.add("serverlog-info")
 			btn.classList.add("c-badge")
@@ -68,7 +71,6 @@ function prepareChatItem(elm, text) {
 
 document.addEventListener('DOMContentLoaded', () => {
 	var conn;
-	var msg = document.getElementById("msg");
 	var serverlog = document.getElementById("serverlog-window");
 
 	function appendLog(item) {

@@ -18,6 +18,7 @@ var DEBUG = true
 var APIBASE = "/api/"
 var APIRE = '\\/api\\/'
 
+var ajaxFullstatus = DOMLoaded
 var playerKick     = DOMLoaded
 var playerBan      = DOMLoaded
 var serverSay      = DOMLoaded
@@ -25,7 +26,7 @@ var serverStop     = DOMLoaded
 var serverMOTD     = DOMLoaded
 var serverTime     = DOMLoaded
 var serverStart    = DOMLoaded
-var serverStatus    = DOMLoaded
+var serverStatus   = DOMLoaded
 var serverSettle   = DOMLoaded
 var serverPassword = DOMLoaded
 var serverRestart  = DOMLoaded
@@ -78,33 +79,33 @@ class TerraControlAPI {
 		return DOMLoaded()
 	}
 
-	oncomplete() {
+	oncomplete(xhttp) {
 		if (DEBUG) {
-			console.log("TerraControl API: Unimplemented: oncomplete: "+this.request)
+			console.log("DEBUG: TerraControl API: Unimplemented: oncomplete: "+this.request)
 		}
 	}
 
-	onsuccess() {
+	onsuccess(xhttp) {
 		if (DEBUG) {
-			console.log("TerraControl API: Unimplemented: onsuccess: "+this.request)
+			console.log("DEBUG: TerraControl API: Unimplemented: onsuccess: "+this.request)
 		}
 	}
 
-	onredirect() {
+	onredirect(xhttp) {
 		if (DEBUG) {
-			console.log("TerraControl API: Unimplemented: onredirect: "+this.request)
+			console.log("DEBUG: TerraControl API: Unimplemented: onredirect: "+this.request)
 		}
 	}
 
-	onfailure() {
+	onfailure(xhttp) {
 		if (DEBUG) {
-			console.log("TerraControl API: Unimplemented: onfail: "+this.request)
+			console.log("DEBUG: TerraControl API: Unimplemented: onfail: "+this.request)
 		}
 	}
 
-	onbadrequest() {
+	onbadrequest(xhttp) {
 		if (DEBUG) {
-			console.log("TerraControl API: Unimplemented: onservererror: "+this.request)
+			console.log("DEBUG: TerraControl API: Unimplemented: onservererror: "+this.request)
 		}
 	}
 
@@ -123,23 +124,23 @@ class TerraControlAPI {
 
 		// Confirm that the request is even valid
 		if (this.onprecall() === true) {
-			xhttp.on
 			xhttp.onreadystatechange = function() {
 				if (xhttp.readyState == 4) {
 					var r = TerraControlAPI.Requester(this.responseURL)
-					r.oncomplete(this.status)
+					r.oncomplete(this)
 					switch (true) {
 						case (this.status <= 299 && this.status >= 200):
-							r.onsuccess(this.status);
+							r.onsuccess(this);
 							break;
 						case (this.status <= 399 && this.status >= 300):
-							r.onredirect(this.status);
+							r.onredirect(this);
 							break;
 						case (this.status <= 499 && this.status >= 400):
-							r.onfailure(this.status);
+							r.onfailure(this);
 							break;
 						case (this.status <= 599 && this.status >= 500):
-							r.onservererror(this.status);
+							console.log("Server Error for API call: ", this)
+							r.onservererror(this);
 							break;
 						default:
 							console.log("TerraControl API: Invalid Response: "+this.status)
@@ -148,8 +149,9 @@ class TerraControlAPI {
 			} 
 			
 			// Make the request
-			xhttp.open("GET", this.request, true)
-			xhttp.send()
+			xhttp.open("GET", this.request, true);
+			xhttp.send();
+			return xhttp.response;
 		}
 	}
 }
@@ -161,7 +163,9 @@ document.addEventListener('DOMContentLoaded', () => {
 	// Only permit the creation of endpoints once the DOM is loaded
 	scopes.set("server", new Map())
 	scopes.set("player", new Map())
+	scopes.set("ajax", new Map())
 
+	ajaxFullstatus = new TerraControlAPI("ajax", "fullstatus")
 	playerKick     = new TerraControlAPI("player", "kick")
 	playerBan      = new TerraControlAPI("player", "ban")
 	serverSay      = new TerraControlAPI("server", "say")
@@ -176,9 +180,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	// serverSay
 	serverSay.onprecall = function() {
-		d = getElementInsideContainer("send-server-message",
+		var d = getElementInsideContainer("send-server-message",
 			"send-server-message-input");
-		if (d.contains("c-field--success")) {
+		console.log(d)
+		if (d.classList.contains("c-field--success")) {
 			return true
 		} else {
 			return false
@@ -241,6 +246,108 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 	}
 	
+	// ajaxFullstatus
+	ajaxFullstatus.onsuccess = function(xhttp) {
+		for (const [key, value] of Object.entries(JSON.parse(xhttp.response))) {
+			switch (key) {
+				case "WorldName":
+					break;
+
+				case "Online":
+					break;
+
+				case "Seed":
+					document.getElementById("world-seed").innerText =
+						"World Seed: " + value
+					break;
+
+				case "MOTD":
+					document.getElementById("game-motd").innerText =
+						"Message of the Day: " + value
+					break;
+
+				case "Password":
+					document.getElementById("game-password").innerText =
+						"Password: " + value
+					break;
+					
+				case "Players":
+					var plist = document.getElementById("player-list")
+
+					while (plist.lastElementChild.id != "player-count") {
+						plist.removeChild(plist.lastElementChild)
+					}
+
+					for (const [_, p] of Object.entries(value)) {
+						var name = p.Name
+						var ip = p.IP
+
+						console.log("Operating on player: "+name + ":"+ip)
+
+						var pdiv = document.createElement("div")
+						var pinput = document.createElement("input")
+						var span = document.createElement("span")
+						var ipb = document.createElement("button")
+						var kick = document.createElement("button")
+						var ban = document.createElement("button")
+
+						// Primary container class
+						pdiv.classList.add("c-card__item")
+						pdiv.classList.add("c-input-group")
+						pdiv.classList.add("player-container")
+
+						// The input here is the first child class
+						pinput.classList.add("c-field")
+						pinput.setAttribute("value", name)
+						pinput.readOnly = true
+						
+						// Span is the second, which contains our buttons
+						span.classList.add("c-input-group")
+
+						// Our Buttons
+						for (var elm of [ipb, kick, ban]) {
+							elm.classList.add("c-input-group")
+							elm.classList.add("c-button")
+							elm.setAttribute("type", "button")
+							elm.value = name
+						}
+
+						ipb.classList.add("c-button--brand")
+						kick.classList.add("c-button--warning")
+						ban.classList.add("c-button--error")
+						
+						ipb.innerText = ip
+						kick.innerText = 'Kick'
+						ban.innerText = 'Ban'
+
+						kick.addEventListener('click', function() {
+							playerKick.call(this.value)
+						})
+
+						ban.addEventListener('click', function() {
+							playerBan.call(this.value)
+						})
+
+						span.append(ipb, kick, ban)
+						pdiv.append(pinput, span)
+						plist.append(pdiv)
+					}
+					break;
+
+				case "PlayerCount":
+					document.getElementById("player-count").innerText = 
+						"Players: " + value
+					break;
+
+				case "Loglevel":
+					break;
+					
+				case "Version":
+					break;
+			}
+		}
+	}
+
 	verifyMessage = function (elm, min, max) {
 		var i = getElementInsideContainer("send-server-div",
 			"send-server-message-button")
@@ -266,9 +373,13 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 	}
 
+	setInterval(function(){ ajaxFullstatus.call() }, 10 * 1000)
+
+	if (DEBUG) {
+		console.log("DOM is ready, and javascript is loaded.")
+	}
+
 	DOMLoaded = function() {
 		return true
 	}
-
-	console.log("DOM is ready, and javascript is loaded.")
 })
