@@ -129,7 +129,7 @@ func (s *TerrariaServer) Start() error {
 
 			case cmd := <-s.commandqueue:
 				time.Sleep(time.Second / 2)
-				b := convertString(cmd)
+				b := prepareInput(cmd)
 				b.WriteTo(s.stdin)
 				LogDebug(s, "Ran: "+cmd)
 				s.commandcount = s.commandcount - 1
@@ -521,7 +521,7 @@ func superviseTerrariaConnects(s *TerrariaServer, cch chan string,
 // text encoding between the two platforms. A better implementation here
 // would determine what encoding is required for the input and return a byte
 // buffer containing bytes of that data type. For now though, this works.
-func convertString(str string) bytes.Buffer {
+func prepareInput(str string) bytes.Buffer {
 	// Just return a new bytes buffer on non-windows platforms
 	if runtime.GOOS != "windows" {
 		return *bytes.NewBuffer([]byte(str))
