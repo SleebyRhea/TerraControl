@@ -159,6 +159,7 @@ func (s *TerrariaServer) Stop() error {
 	go func() { done <- s.Cmd.Wait() }()
 
 	LogDebug(s, "Waiting for Terraria to exit")
+	s.players = nil
 	select {
 	case <-time.After(30 * time.Second):
 		s.Cmd.Process.Kill()
