@@ -44,11 +44,9 @@ class TerraControlAPI {
 
 	static RequestBuilder(s, o, ...args) {
 		var r = APIBASE + s + "/" + o + "/";
-		if (args.length > 0) {
-			for (var v of Array.from(args)) {
-				if (v != "" && v != undefined) {
-					r = r + v;
-				}
+		for (var v of args) {
+			if (typeof v === 'string') {
+				r = r + v
 			}
 		}
 		return r;
@@ -120,6 +118,7 @@ class TerraControlAPI {
 		if (DEBUG) {
 			console.log("Making request: "+this.request)
 		}
+
 		var xhttp = new XMLHttpRequest();
 
 		// Confirm that the request is even valid
@@ -371,6 +370,11 @@ document.addEventListener('DOMContentLoaded', () => {
 				i.classList.remove("c-button--error")
 			}
 		}
+	}
+
+	// playerKick
+	playerKick.oncomplete = function() {
+		setTimeout(function() { ajaxFullstatus.call() }, 3000)
 	}
 
 	setInterval(function(){ ajaxFullstatus.call() }, 10 * 1000)
