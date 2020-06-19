@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"log"
 	"net/http"
@@ -50,15 +49,4 @@ func main() {
 			log.Output(1, "Caught signal "+sig.String())
 		}
 	}
-}
-
-func convertString(str string) bytes.Buffer {
-	b := *bytes.NewBuffer(make([]byte, 0))
-	nul := []byte{0x0000}
-	for _, c := range str {
-		b.WriteRune(c)
-		b.Write(nul)
-	}
-	log.Output(1, sprintf("[DEBUG] Converted string %q to [% x] ", str, b.Bytes()))
-	return b
 }

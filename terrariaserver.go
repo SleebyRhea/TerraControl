@@ -2,10 +2,13 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"errors"
 	"io"
+	"log"
 	"net"
 	"os/exec"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -509,4 +512,27 @@ func superviseTerrariaConnects(s *TerrariaServer, cch chan string,
 			return
 		}
 	}
+}
+
+// This is an ugly hack that needs to be cleaned up and replaced with something
+// less terrible. It converts a string to a byteslice buffer with a NUL following
+// every byte. This seems to be a requirement for the windows versions of the
+// game to accept input piped into it, and is likely just a difference in
+// text encoding between the two platforms. A better implementation here
+// would determine what encoding is required for the input and return a byte
+// buffer containing bytes of that data type. For now though, this works.
+func convertString(str string) bytes.Buffer {
+	// Just return a new bytes buffer on non-windows platforms
+	if runtime.GOOS != "windows" {
+		return *bytes.NewBuffer([]byte(str))
+	}
+
+	b := *bytes.NewBuffer(make([]byte, 0))
+	nul := []byte{0x0000}
+	for _, c := range str {
+		b.WriteRune(c)
+		b.Write(nul)
+	}
+	log.Output(1, sprintf("[DEBUG] Converted string %q to [% x] ", str, b.Bytes()))
+	return b
 }
