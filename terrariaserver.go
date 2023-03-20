@@ -89,7 +89,7 @@ type TerrariaServer struct {
 func (s *TerrariaServer) Start() error {
 	var err error
 
-	world := "C:\\Users\\Andrew Wyatt\\Documents\\My Games\\Terraria\\Worlds\\World11.wld"
+	world := "world.wld"
 	s.Cmd = exec.Command(s.path,
 		"-autocreate", "3",
 		"-world", world,
